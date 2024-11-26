@@ -38,12 +38,6 @@ from apps.users.views import (
     PasswordResetConfirmView,
 )
 
-jwt_security_scheme = openapi.SecurityScheme(
-    type='apiKey',
-    in_='header',
-    name='Authorization',
-    description='JWT Authorization header using the Bearer token. Example: "Authorization: Bearer {token}"'
-)
 
 # Schema view configuration for Swagger
 schema_view = get_schema_view(
@@ -57,20 +51,7 @@ schema_view = get_schema_view(
     ),
     public=True,
     permission_classes=(permissions.AllowAny,),  # Allow access without authentication
-    authentication_classes=[],
-    security_definitions={
-        'Bearer': jwt_security_scheme
-    },
-    servers = [
-        {
-            "url": "http://localhost:8000",
-            "description": "Local development server"
-        },
-        {
-            "url": "https://shop-be.azurewebsites.net",
-            "description": "Production server"
-        }
-    ]
+    url='https://shop-be.azurewebsites.net/api',  # URL to API
 )
 
 urlpatterns = [
