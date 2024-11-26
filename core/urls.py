@@ -34,9 +34,10 @@ from apps.users.views import (
     UserLoginView,
     VerifyUserView,
     PasswordResetRequestView,
-    PasswordResetConfirmView
+    PasswordResetConfirmView,
 )
 
+# Schema view configuration for Swagger
 schema_view = get_schema_view(
     openapi.Info(
         title="Shop Management API",
@@ -47,11 +48,11 @@ schema_view = get_schema_view(
         license=openapi.License(name="BSD License"),
     ),
     public=True,
-    permission_classes=(permissions.AllowAny,),
+    permission_classes=(permissions.AllowAny,),  # Allow access without authentication
 )
 
 urlpatterns = [
-    path('', index, name='index'), 
+    path('', index, name='index'),
     path('admin/', admin.site.urls),
     # path('api/', include('shop.urls')),
 
@@ -61,12 +62,13 @@ urlpatterns = [
     path('api/login', UserLoginView.as_view(), name='login'),
     path('api/password-reset', PasswordResetRequestView.as_view(), name='password-reset'),
     path('api/password-reset-confirm', PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
-    
-    # Swagger URLs
-    path('swagger<format>', schema_view.without_ui(cache_timeout=0), name='schema-json'),
+
+    # Swagger URLs (accessible in any environment)
+    path('swagger.<str:format>', schema_view.without_ui(cache_timeout=0), name='schema-json'),
     path('swagger', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('redoc', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
 ]
 
+# Serve static and media files in development
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
