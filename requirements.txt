@@ -17,6 +17,7 @@ inflection==0.5.1
 multidict==6.1.0
 packaging==24.2
 propcache==0.2.0
+psycopg==3.2.3
 PyJWT==2.10.0
 python-decouple==3.8
 python-dotenv==1.0.1
