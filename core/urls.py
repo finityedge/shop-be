@@ -47,6 +47,16 @@ schema_view = get_schema_view(
         terms_of_service="https://www.finityedge.com",
         contact=openapi.Contact(email="francis@finityedge.com"),
         license=openapi.License(name="BSD License"),
+        servers=[
+            {
+                "url": "http://localhost:8000/api/",
+                "description": "Local development server"
+            },
+            {
+                "url": "https://shop-be.azurewebsites.net/api/",
+                "description": "Production server"
+            }
+        ]
     ),
     public=True,
     permission_classes=(permissions.AllowAny,),  # Allow access without authentication
