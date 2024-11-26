@@ -142,9 +142,9 @@ class UserLoginSerializer(serializers.Serializer):
     """
     Serializer for user login process.
     """
-    phone = serializers.CharField(
-        required=True,
-        help_text="User's registered phone number"
+    username = serializers.CharField(
+        required=False,
+        help_text="Username or phone number"
     )
     password = serializers.CharField(
         required=True, 
@@ -157,14 +157,14 @@ class UserLoginSerializer(serializers.Serializer):
         """
         Validate login credentials.
         """
-        phone = data.get('phone')
+        username = data.get('username')
         password = data.get('password')
 
-        if not phone or not password:
+        if not username or not password:
             raise serializers.ValidationError("Both phone and password are required.")
 
         try:
-            user = User.objects.get(phone=phone)
+            user = User.objects.get(username=username)
             
             if not user.check_password(password):
                 raise serializers.ValidationError("Invalid login credentials.")

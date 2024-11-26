@@ -36,6 +36,7 @@ from apps.users.views import (
     VerifyUserView,
     PasswordResetRequestView,
     PasswordResetConfirmView,
+    SendDummyMessageView
 )
 
 
@@ -65,6 +66,7 @@ urlpatterns = [
     path('api/login', UserLoginView.as_view(), name='login'),
     path('api/password-reset', PasswordResetRequestView.as_view(), name='password-reset'),
     path('api/password-reset-confirm', PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
+    path('api/send-dummy-message', SendDummyMessageView.as_view(), name='send-dummy-message'),
 
     # Swagger URLs (accessible in any environment)
     path('swagger.<str:format>', schema_view.without_ui(cache_timeout=0), name='schema-json'),

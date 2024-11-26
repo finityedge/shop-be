@@ -85,8 +85,8 @@ class UserRegistrationView(generics.CreateAPIView):
             )
             verification_url = f'http://localhost:3000/api/verify/{user.verification_token}'
             message = f"Welcome! Verify your account: {verification_url}"
-            # Uncomment to send WhatsApp message
-            # whatsapp_helper.send_whatsapp_message(f"whatsapp:{user.phone}", message)
+            
+            whatsapp_helper.send_whatsapp_message(f"whatsapp:{user.phone}", message)
 
             return Response({
                 'message': 'User and Shop registered successfully',
@@ -103,6 +103,45 @@ class UserRegistrationView(generics.CreateAPIView):
                 'error': 'Unexpected error during registration',
                 'details': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+class SendDummyMessageView(views.APIView):
+    """
+    API endpoint for sending a dummy WhatsApp message.
+    
+    This view is used to test the WhatsAppHelper class.
+    """
+    permission_classes = [AllowAny]
+
+    @swagger_auto_schema(
+        operation_description='Send a dummy WhatsApp message',
+        tags=['Users'],
+        responses={200: 'Message sent successfully'}
+    )
+    def get(self, request):
+        """
+        Send a dummy WhatsApp message.
+        
+        - Create a WhatsAppHelper instance
+        - Send a test message
+        """
+        whatsapp_helper = WhatsAppHelper(
+            settings.TWILIO_ACCOUNT_SID, 
+            settings.TWILIO_AUTH_TOKEN, 
+            '+23058000613'
+        )
+
+        verification_url = f'http://localhost:3000/api/verify/6565'
+        str_message = f"Welcome! Verify your account: {verification_url}"
+        
+        message = whatsapp_helper.send_whatsapp_message(
+            'whatsapp:+23054879046', 
+            str_message
+        )
+
+        print(message.sid)
+        print(message.status)
+        
+        return Response({'message': 'Message sent successfully'}, status=status.HTTP_200_OK)
 
 class VerifyUserView(views.APIView):
     """
@@ -149,12 +188,12 @@ class VerifyUserView(views.APIView):
             user = User.objects.get(verification_token=token)
             
             # Check token expiration (e.g., 24 hours)
-            token_age = timezone.now() - user.verification_token_created_at
-            if token_age.total_seconds() > 24 * 3600:
-                return Response(
-                    {'error': 'Verification token has expired'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+            # token_age = timezone.now() - user.verification_token_created_at
+            # if token_age.total_seconds() > 24 * 3600:
+            #     return Response(
+            #         {'error': 'Verification token has expired'},
+            #         status=status.HTTP_400_BAD_REQUEST
+            #     )
 
             user.is_verified = True
             user.verification_token = None
@@ -190,9 +229,9 @@ class UserLoginView(views.APIView):
         tags=['Users'],
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
-            required=['phone', 'password'],
+            required=['username', 'password'],
             properties={
-                'phone': openapi.Schema(type=openapi.TYPE_STRING, description='User phone number'),
+                'username': openapi.Schema(type=openapi.TYPE_STRING, description='Username'),
                 'password': openapi.Schema(type=openapi.TYPE_STRING, description='User password')
             }
         ),
