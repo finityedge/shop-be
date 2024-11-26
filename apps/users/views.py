@@ -1,42 +1,90 @@
 from rest_framework import generics, status, views, serializers
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
-from apps.users.serializers import UserRegistrationSerializer, UserLoginSerializer, PasswordResetRequestSerializer, PasswordResetConfirmSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.contrib.auth import authenticate
-from django.utils.http import urlsafe_base64_decode
-from django.utils.encoding import force_str
-from django.contrib.auth.tokens import default_token_generator
-from .models import User
+
 from drf_yasg import openapi
-from .serializers import UserRegistrationSerializer
 from drf_yasg.utils import swagger_auto_schema
 
+from django.contrib.auth import get_user_model
+from django.utils import timezone
+
+from apps.users.serializers import (
+    UserRegistrationSerializer, 
+    UserLoginSerializer, 
+    PasswordResetRequestSerializer, 
+    PasswordResetConfirmSerializer
+)
 from core.whatsapp_helper import WhatsAppHelper
 from core import settings
 
-# Assuming you have the necessary Twilio credentials
-TWILIO_ACCOUNT_SID = settings.TWILIO_ACCOUNT_SID
-TWILIO_AUTH_TOKEN = settings.TWILIO_AUTH_TOKEN
-TWILIO_WHATSAPP_FROM_NUMBER = settings.TWILIO_PHONE_NUMBER
-VERIFICATION_URL = 'http://localhost:3000/api/verify/{0}'
-    
-class UserRegistrationView(generics.CreateAPIView):
-    serializer_class = UserRegistrationSerializer
+User = get_user_model()
 
+class UserRegistrationView(generics.CreateAPIView):
+    """
+    API endpoint for user registration.
+    
+    This view handles:
+    - User and shop creation
+    - Generating verification token
+    - Sending verification message
+    """
+    serializer_class = UserRegistrationSerializer
+    permission_classes = [AllowAny]
+
+    @swagger_auto_schema(
+        operation_description='Register a new user with shop details',
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=[
+                'phone', 'username', 'name', 
+                'password', 'confirm_password', 
+                'shop_name', 'shop_type', 'address'
+            ],
+            properties={
+                'phone': openapi.Schema(type=openapi.TYPE_STRING, description='User phone number'),
+                'username': openapi.Schema(type=openapi.TYPE_STRING, description='Unique username'),
+                'name': openapi.Schema(type=openapi.TYPE_STRING, description='Full name'),
+                'password': openapi.Schema(type=openapi.TYPE_STRING, description='User password'),
+                'confirm_password': openapi.Schema(type=openapi.TYPE_STRING, description='Password confirmation'),
+                'shop_name': openapi.Schema(type=openapi.TYPE_STRING, description='Name of the shop'),
+                'shop_type': openapi.Schema(type=openapi.TYPE_STRING, description='Type of the shop'),
+                'address': openapi.Schema(type=openapi.TYPE_STRING, description='Shop address')
+            }
+        ),
+        responses={
+            201: 'User and Shop registered successfully',
+            400: 'Registration failed due to validation errors'
+        }
+    )
     def create(self, request, *args, **kwargs):
+        """
+        Handle user registration process.
+        
+        - Validate user and shop details
+        - Generate verification token
+        - Optionally send verification message
+        """
         serializer = self.get_serializer(data=request.data)
 
         try:
             serializer.is_valid(raise_exception=True)
             user = serializer.save()
+            
+            # Generate verification token
             user.generate_verification_token()
+            user.verification_token_created_at = timezone.now()
             user.save()
 
-            # Send WhatsApp verification message
-            whatsapp_helper = WhatsAppHelper(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM_NUMBER)
-            verification_url = VERIFICATION_URL.format(user.verification_token)
-            message = f"Welcome to our app! Please click the link to verify your account: {verification_url}"
+            # Send verification message (optional)
+            whatsapp_helper = WhatsAppHelper(
+                settings.TWILIO_ACCOUNT_SID, 
+                settings.TWILIO_AUTH_TOKEN, 
+                settings.TWILIO_PHONE_NUMBER
+            )
+            verification_url = f'http://localhost:3000/api/verify/{user.verification_token}'
+            message = f"Welcome! Verify your account: {verification_url}"
+            # Uncomment to send WhatsApp message
             # whatsapp_helper.send_whatsapp_message(f"whatsapp:{user.phone}", message)
 
             return Response({
@@ -45,35 +93,98 @@ class UserRegistrationView(generics.CreateAPIView):
             }, status=status.HTTP_201_CREATED)
 
         except serializers.ValidationError as e:
-            # Handle validation errors with more detail
             return Response({
                 'error': 'Registration failed',
                 'details': e.detail
             }, status=status.HTTP_400_BAD_REQUEST)
-        
+        except Exception as e:
+            return Response({
+                'error': 'Unexpected error during registration',
+                'details': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 class VerifyUserView(views.APIView):
+    """
+    API endpoint for user account verification.
+    
+    Validates user's verification token and activates the account.
+    """
+    permission_classes = [AllowAny]
+
     @swagger_auto_schema(
-        operation_summary='Verify user',
-        manual_parameters=[openapi.Parameter('token', openapi.IN_QUERY, description='Verification token', type=openapi.TYPE_STRING)],
-        operation_description='Verify user with the provided token.',
+        operation_summary='Verify user account',
+        manual_parameters=[
+            openapi.Parameter(
+                'token', 
+                openapi.IN_QUERY, 
+                description='Verification token sent to user',
+                type=openapi.TYPE_STRING
+            )
+        ],
         responses={
-            200: 'User verified successfully.',
-            400: 'Invalid verification token.'
+            200: 'User verified successfully',
+            400: 'Invalid or expired verification token',
+            500: 'Unexpected error during verification'
         }
     )
     def get(self, request):
+        """
+        Verify user account using token.
+        
+        - Check token validity
+        - Mark user as verified
+        - Handle token expiration
+        """
         token = request.GET.get('token')
+        
+        if not token:
+            return Response(
+                {'error': 'Verification token is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         try:
             user = User.objects.get(verification_token=token)
+            
+            # Check token expiration (e.g., 24 hours)
+            token_age = timezone.now() - user.verification_token_created_at
+            if token_age.total_seconds() > 24 * 3600:
+                return Response(
+                    {'error': 'Verification token has expired'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
             user.is_verified = True
+            user.verification_token = None
+            user.verification_token_created_at = None
             user.save()
-            return Response({'message': 'User verified successfully.'}, status=status.HTTP_200_OK)
+
+            return Response(
+                {'message': 'User verified successfully'},
+                status=status.HTTP_200_OK
+            )
+
         except User.DoesNotExist:
-            return Response({'error': 'Invalid verification token.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {'error': 'Invalid verification token'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            return Response(
+                {'error': 'Unexpected error during verification', 'details': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 class UserLoginView(views.APIView):
+    """
+    API endpoint for user login.
+    
+    Handles user authentication and token generation.
+    """
+    permission_classes = [AllowAny]
+
     @swagger_auto_schema(
-        operation_description="Login with phone and password",
+        operation_description='Authenticate user and generate tokens',
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             required=['phone', 'password'],
@@ -96,10 +207,17 @@ class UserLoginView(views.APIView):
                     }
                 )
             ),
-            400: 'Bad Request - Invalid Credentials'
+            400: 'Authentication failed',
+            500: 'Unexpected server error'
         }
     )
     def post(self, request):
+        """
+        Authenticate user and generate JWT tokens.
+        
+        - Validate login credentials
+        - Generate access and refresh tokens
+        """
         serializer = UserLoginSerializer(data=request.data)
         
         try:
@@ -110,13 +228,25 @@ class UserLoginView(views.APIView):
         
         except serializers.ValidationError as e:
             return Response(
-                {'error': str(e.detail)}, 
+                {'error': 'Authentication failed', 'details': e.detail}, 
                 status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            return Response(
+                {'error': 'Unexpected error during login', 'details': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
 class PasswordResetRequestView(views.APIView):
+    """
+    API endpoint for initiating password reset.
+    
+    Generates and sends OTP for password reset.
+    """
+    permission_classes = [AllowAny]
+
     @swagger_auto_schema(
-        operation_description='Request password reset',
+        operation_description='Request password reset OTP',
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             required=['phone'],
@@ -126,41 +256,42 @@ class PasswordResetRequestView(views.APIView):
         ),
         responses={
             200: openapi.Response(
-                description='Password reset link sent successfully',
+                description='OTP sent successfully',
                 schema=openapi.Schema(
                     type=openapi.TYPE_OBJECT,
                     properties={
-                        'message': openapi.Schema(type=openapi.TYPE_STRING)
+                        'message': openapi.Schema(type=openapi.TYPE_STRING),
+                        'otp': openapi.Schema(type=openapi.TYPE_STRING),
+                        'otp_expiry': openapi.Schema(type=openapi.TYPE_STRING)
                     }
                 )
             ),
-            400: 'Bad Request - Invalid phone number'
+            400: 'Bad Request - Invalid phone number',
+            500: 'Unexpected server error'
         }
     )
-
     def post(self, request):
         """
-        Handle password reset request via phone number
+        Handle password reset request.
         
-        Validates the phone number, generates OTP, 
-        and sends reset instructions via WhatsApp
+        - Validate phone number
+        - Generate OTP
+        - Send OTP via WhatsApp
         """
         serializer = PasswordResetRequestSerializer(data=request.data)
         
         try:
-            # Validate the serializer 
             serializer.is_valid(raise_exception=True)
-            
-            # Create the reset request (which sends OTP)
             user = serializer.save()
             
-            # Optional: Send WhatsApp message with OTP
+            # Optional: Send WhatsApp message
             whatsapp_helper = WhatsAppHelper(
-                TWILIO_ACCOUNT_SID, 
-                TWILIO_AUTH_TOKEN, 
-                TWILIO_WHATSAPP_FROM_NUMBER
+                settings.TWILIO_ACCOUNT_SID, 
+                settings.TWILIO_AUTH_TOKEN, 
+                settings.TWILIO_PHONE_NUMBER
             )
             message = f"Your password reset OTP is: {user.otp}. This OTP will expire in 5 minutes."
+            # Uncomment to send WhatsApp message
             # whatsapp_helper.send_whatsapp_message(f"whatsapp:{user.phone}", message)
             
             return Response(
@@ -169,19 +300,22 @@ class PasswordResetRequestView(views.APIView):
             )
         
         except serializers.ValidationError as e:
-            # Handle validation errors (e.g., user not found, not verified)
             return Response(
-                {'error': str(e.detail)},
+                {'error': 'Password reset request failed', 'details': e.detail},
                 status=status.HTTP_400_BAD_REQUEST
             )
         except Exception as e:
-            # Handle any unexpected errors
             return Response(
-                {'error': 'An unexpected error occurred'},
+                {'error': 'Unexpected error during password reset request', 'details': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
 class PasswordResetConfirmView(views.APIView):
+    """
+    API endpoint for confirming password reset.
+    
+    Validates OTP and sets new password.
+    """
     permission_classes = [AllowAny]
 
     @swagger_auto_schema(
@@ -197,53 +331,40 @@ class PasswordResetConfirmView(views.APIView):
             }
         ),
         responses={
-            200: openapi.Response(
-                description='Password reset successful',
-                schema=openapi.Schema(
-                    type=openapi.TYPE_OBJECT,
-                    properties={
-                        'message': openapi.Schema(type=openapi.TYPE_STRING)
-                    }
-                )
-            ),
-            400: 'Bad Request - Invalid reset details'
+            200: 'Password reset successful',
+            400: 'Invalid reset details',
+            500: 'Unexpected server error'
         }
     )
     def post(self, request):
         """
-        Handle password reset confirmation using OTP
+        Handle password reset confirmation.
         
-        Validates:
-        - Matching passwords
-        - Valid OTP
-        - OTP not expired
+        - Validate OTP and new password
+        - Reset password
+        - Optional: Invalidate existing tokens
         """
         serializer = PasswordResetConfirmSerializer(data=request.data)
         
         try:
-            # Validate the serializer 
             serializer.is_valid(raise_exception=True)
-            
-            # Save the new password
             user = serializer.save()
             
-            # Optional: Invalidate all existing tokens for the user
+            # Optional: Invalidate all existing tokens
             # RefreshToken.for_user(user).blacklist()
             
             return Response(
-                {'message': 'Password has been reset successfully.'},
+                {'message': 'Password reset successful'},
                 status=status.HTTP_200_OK
             )
         
         except serializers.ValidationError as e:
-            # Handle validation errors 
             return Response(
-                {'error': e.detail},
+                {'error': 'Password reset failed', 'details': e.detail},
                 status=status.HTTP_400_BAD_REQUEST
             )
         except Exception as e:
-            # Handle any unexpected errors
             return Response(
-                {'error': 'An unexpected error occurred'},
+                {'error': 'Unexpected error during password reset', 'details': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
