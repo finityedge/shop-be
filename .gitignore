@@ -1,0 +1,72 @@
+# Byte-compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Environment variables
+.env
+*.env
+
+# Django specific
+db.sqlite3
+db.sqlite3-journal
+/media/
+/staticfiles/
+
+# If using whitenoise for static files
+/static/
+
+# Django migrations
+**/migrations/*
+!**/migrations/__init__.py
+
+# Logs
+*.log
+logs/
+
+# Virtual environments
+venv/
+env/
+.virtualenv/
+
+# IDE files
+.vscode/
+.idea/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Testing
+.coverage
+*.cover
+coverage.xml
+*.log
+nosetests.xml
+test-results.xml
+
+# MyPy
+.mypy_cache/
+
+# Pytest
+.pytest_cache/
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Other
+*.swp
+*.swo
+*.bak
+*.tmp
+
+# Local security files
+.secret/
+.key/
