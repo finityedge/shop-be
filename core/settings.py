@@ -27,7 +27,10 @@ SECRET_KEY = 'django-insecure-#x$o@2xtfenela6m1v)0=zaky%0r9ybp5uq%++hwvpx0lc42(y
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    '*',
+    'shop-be.azurewebsites.net'
+]
 
 # Load the .env file
 load_dotenv()
