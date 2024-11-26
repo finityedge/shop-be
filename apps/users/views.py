@@ -34,6 +34,7 @@ class UserRegistrationView(generics.CreateAPIView):
 
     @swagger_auto_schema(
         operation_description='Register a new user with shop details',
+        tags=['Users'],
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             required=[
@@ -113,6 +114,7 @@ class VerifyUserView(views.APIView):
 
     @swagger_auto_schema(
         operation_summary='Verify user account',
+        tags=['Users'],
         manual_parameters=[
             openapi.Parameter(
                 'token', 
@@ -185,6 +187,7 @@ class UserLoginView(views.APIView):
 
     @swagger_auto_schema(
         operation_description='Authenticate user and generate tokens',
+        tags=['Users'],
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             required=['phone', 'password'],
@@ -247,6 +250,7 @@ class PasswordResetRequestView(views.APIView):
 
     @swagger_auto_schema(
         operation_description='Request password reset OTP',
+        tags=['Users'],
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             required=['phone'],
@@ -320,6 +324,7 @@ class PasswordResetConfirmView(views.APIView):
 
     @swagger_auto_schema(
         operation_description='Confirm password reset with OTP',
+        tags=['Users'],
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             required=['phone', 'otp', 'new_password', 'confirm_password'],
