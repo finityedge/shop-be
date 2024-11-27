@@ -335,7 +335,7 @@ class PasswordResetRequestView(views.APIView):
             )
             message = f"Your password reset OTP is: {user.otp}. This OTP will expire in 5 minutes."
             # Uncomment to send WhatsApp message
-            # whatsapp_helper.send_whatsapp_message(f"whatsapp:{user.phone}", message)
+            whatsapp_helper.send_whatsapp_message(f"whatsapp:{user.phone}", message)
             
             return Response(
                 serializer.to_representation(user),

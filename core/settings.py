@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'drf_yasg',
     'apps.users',
     'apps.shop',
+    'corsheaders',
 ]
 
 REST_FRAMEWORK = {
@@ -64,6 +65,7 @@ REST_FRAMEWORK = {
 AUTH_USER_MODEL = 'users.User'
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -73,6 +75,8 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
+
+CORS_ALLOW_ALL_ORIGINS = True
 
 ROOT_URLCONF = 'core.urls'
 
