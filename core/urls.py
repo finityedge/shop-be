@@ -38,7 +38,7 @@ from apps.users.views import (
     PasswordResetConfirmView,
     SendDummyMessageView
 )
-from apps.inventory.views import CategoryDetailView, CategoryListCreateView, LowStockAlertsView, ProductDetailView, ProductListCreateView, PurchaseOrderDetailView, PurchaseOrderListCreateView, ReceivePurchaseOrderView, StockAdjustmentView, StockMovementListView, SupplierDetailView, SupplierListCreateView
+from apps.inventory.views import CategoryDetailView, CategoryListCreateView, LowStockAlertsView, ProductDetailView, ProductListCreateView, PurchaseOrderDetailView, PurchaseOrderListCreateView, ReceivePurchaseOrderView, StockAdjustmentView, StockMovementListView, SupplierDetailView, SupplierListCreateView, UnitListView
 
 
 # Schema view configuration for Swagger
@@ -70,15 +70,16 @@ urlpatterns = [
     path('api/send-dummy-message', SendDummyMessageView.as_view(), name='send-dummy-message'),
 
     # Inventory URLs
-    path('api/inventory/categories', CategoryListCreateView.as_view(), name='category-list-create'),
-    path('api/inventory/categories/<int:pk>', CategoryDetailView.as_view(), name='category-detail'),
+    path('api/categories', CategoryListCreateView.as_view(), name='category-list-create'),
+    path('api/categories/<int:pk>', CategoryDetailView.as_view(), name='category-detail'),
 
     # Units URLs
+    path('api/units', UnitListView.as_view(), name='unit-list-create'),
 
 
     # Inventory URLs - Products
-    path('api/inventory/products', ProductListCreateView.as_view(), name='product-list-create'),
-    path('api/inventory/products/<int:pk>', ProductDetailView.as_view(), name='product-detail'),
+    path('api/products', ProductListCreateView.as_view(), name='product-list-create'),
+    path('api/products/<int:pk>', ProductDetailView.as_view(), name='product-detail'),
     # path('api/inventory/products/bulk-upload', BulkProductUploadView.as_view(), name='product-bulk-upload'),
     
     # Inventory URLs - Stock Management
@@ -87,14 +88,14 @@ urlpatterns = [
     path('api/inventory/stock/low-alerts', LowStockAlertsView.as_view(), name='low-stock-alerts'),
 
     # Inventory URLs - Suppliers
-    path('api/inventory/suppliers', SupplierListCreateView.as_view(), name='supplier-list-create'),
-    path('api/inventory/suppliers/<int:pk>', SupplierDetailView.as_view(), name='supplier-detail'),
+    path('api/suppliers', SupplierListCreateView.as_view(), name='supplier-list-create'),
+    path('api/suppliers/<int:pk>', SupplierDetailView.as_view(), name='supplier-detail'),
 
     # Inventory URLs - Purchase Orders
-    path('api/inventory/purchase-orders', PurchaseOrderListCreateView.as_view(), name='purchase-order-list-create'),
-    path('api/inventory/purchase-orders/<int:pk>', PurchaseOrderDetailView.as_view(), name='purchase-order-detail'),
-    path('api/inventory/purchase-orders/<int:pk>/status', PurchaseOrderDetailView.as_view(), name='purchase-order-status-update'),
-    path('api/inventory/purchase-orders/receive', ReceivePurchaseOrderView.as_view(), name='receive-purchase-order'),
+    path('api/purchase-orders', PurchaseOrderListCreateView.as_view(), name='purchase-order-list-create'),
+    path('api/purchase-orders/<int:pk>', PurchaseOrderDetailView.as_view(), name='purchase-order-detail'),
+    path('api/purchase-orders/<int:pk>/status', PurchaseOrderDetailView.as_view(), name='purchase-order-status-update'),
+    path('api/purchase-orders/receive', ReceivePurchaseOrderView.as_view(), name='receive-purchase-order'),
 
     # Swagger URLs (accessible in any environment)
     path('swagger.<str:format>', schema_view.without_ui(cache_timeout=0), name='schema-json'),

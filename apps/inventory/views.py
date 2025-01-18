@@ -459,6 +459,7 @@ class PurchaseOrderDetailView(generics.RetrieveUpdateDestroyAPIView):
     @swagger_auto_schema(
         method='patch',
         operation_description='Update purchase order status',
+        tags=['Purchase Orders'],
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             required=['status'],
@@ -514,6 +515,7 @@ class ReceivePurchaseOrderView(views.APIView):
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             required=['purchase_order_id', 'items'],
+            tags= ['Purchase Orders'],
             properties={
                 'purchase_order_id': openapi.Schema(type=openapi.TYPE_INTEGER),
                 'items': openapi.Schema(
@@ -644,10 +646,12 @@ class UnitListView(generics.ListAPIView):
         }
     )
     def list(self, request, *args, **kwargs):
-        return super().list(request, *args, **kwargs)
+        units = self.get_queryset()
+        serializer = self.get_serializer(units, many=True)
+        return Response(serializer.data)
     
     def get_queryset(self):
-        return Unit.objects.filter(shop=self.request.user.shop)
+        return Unit.objects.all()
     
     def perform_create(self, serializer):
         serializer.validated_data['shop'] = self.request.user.shop

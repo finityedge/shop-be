@@ -47,6 +47,11 @@ class ProductListSerializer(serializers.ModelSerializer):
             'unit_symbol', 'selling_price', 'current_stock', 'is_active'
         ]
 
+    def create(self, validated_data):
+        validated_data['shop'] = self.context['request'].user.shop
+        return super().create(validated_data)
+    
+
 class ProductDetailSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='category.name', read_only=True)
     unit_details = UnitSerializer(source='unit', read_only=True)
