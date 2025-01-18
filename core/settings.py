@@ -22,7 +22,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-#x$o@2xtfenela6m1v)0=zaky%0r9ybp5uq%++hwvpx0lc42(y'
+SECRET_KEY = 'django-insecure-#x$o@2xtfenela6m1v)0=zaky%9ybp5uq%++hwvpx0lc42(y'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'drf_yasg',
     'apps.users',
     'apps.shop',
+    'apps.inventory',
     'corsheaders',
 ]
 
@@ -82,6 +83,7 @@ CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     'https://localhost:3001',
     'http://localhost:5173',
+    'http://127.0.0.1:8000',
 ] 
 CORS_ALLOWED_ORIGIN_REGEXES = [
     'https://localhost:3001',
@@ -209,6 +211,21 @@ STATICFILES_FINDERS = [
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+SWAGGER_SETTINGS = {
+    'SECURITY_DEFINITIONS': {
+        'Bearer': {
+            'type': 'apiKey',
+            'name': 'Authorization',
+            'in': 'header'
+        }
+    },
+    'USE_SESSION_AUTH': False,
+    'SECURITY_REQUIREMENTS': [
+        {'Bearer': []}
+    ],
+    'DEFAULT_API_URL': os.getenv('SWAGGER_BASE_URL', 'http://localhost:8000/api/')
+}
 
 # Enable HTTPS-related settings
 SECURE_SSL_REDIRECT = True  # Redirect HTTP to HTTPS
