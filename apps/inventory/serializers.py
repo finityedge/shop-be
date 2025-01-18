@@ -43,7 +43,7 @@ class ProductListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = [
-            'id', 'shop', 'name', 'sku', 'category_name', 'unit', 'cost_price',
+            'id', 'shop', 'name', 'sku', 'category_name', 'category', 'unit', 'cost_price',
             'unit_symbol', 'selling_price', 'current_stock', 'is_active'
         ]
 
@@ -51,6 +51,25 @@ class ProductListSerializer(serializers.ModelSerializer):
         validated_data['shop'] = self.context['request'].user.shop
         return super().create(validated_data)
     
+class ProductCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = [
+            'name', 'sku', 'barcode', 'category', 'description', 'unit',
+            'cost_price', 'selling_price', 'minimum_stock', 'maximum_stock', 'is_active',
+            'created_at', 'modified_at', 'created_by', 'modified_by'
+        ]
+        read_only_fields = ['created_at', 'modified_at', 'created_by', 'modified_by'] 
+
+class ProductUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = [
+            'name', 'sku', 'barcode', 'category', 'description', 'unit',
+            'cost_price', 'selling_price', 'minimum_stock', 'maximum_stock', 'is_active',
+            'created_at', 'modified_at', 'created_by', 'modified_by'
+        ]
+        read_only_fields = ['created_at', 'modified_at', 'created_by', 'modified_by']    
 
 class ProductDetailSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='category.name', read_only=True)
@@ -61,6 +80,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         decimal_places=2,
         read_only=True
     )
+    shop = serializers.CharField(source='shop.shop_name', read_only=True)
 
     class Meta:
         model = Product
@@ -73,6 +93,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at', 'modified_at', 'created_by', 'modified_by']
 
 class SupplierSerializer(serializers.ModelSerializer):
+    shop = serializers.CharField(source='shop.shop_name', read_only=True)
     class Meta:
         model = Supplier
         fields = [
@@ -110,6 +131,15 @@ class StockMovementSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['created_at', 'modified_at', 'created_by', 'modified_by']
 
+class PurchaseOrderItemCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PurchaseOrderItem
+        fields = [
+            'product', 'quantity', 'unit_price', 'received_quantity',
+            'created_at', 'modified_at', 'created_by', 'modified_by'
+        ]
+        read_only_fields = ['created_at', 'modified_at', 'created_by', 'modified_by']
+
 class PurchaseOrderItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
     unit_symbol = serializers.CharField(source='product.unit.symbol', read_only=True)
@@ -131,10 +161,19 @@ class PurchaseOrderListSerializer(serializers.ModelSerializer):
     class Meta:
         model = PurchaseOrder
         fields = [
-            'id', 'shop', 'po_number', 'supplier', 'supplier_name',
+            'id', 'shop', 'po_number', 'supplier_id', 'supplier', 'supplier_name',
             'status', 'status_display', 'expected_delivery_date',
             'subtotal', 'tax_amount', 'total',
             'created_at', 'modified_at'
+        ]
+
+class PurchaseOrderCreateSerializer(serializers.ModelSerializer):
+    items = PurchaseOrderItemCreateSerializer(many=True)
+
+    class Meta:
+        model = PurchaseOrder
+        fields = [
+            'supplier', 'expected_delivery_date', 'notes', 'items'
         ]
 
 class PurchaseOrderDetailSerializer(serializers.ModelSerializer):
@@ -163,3 +202,11 @@ class PurchaseOrderDetailSerializer(serializers.ModelSerializer):
             )
         
         return purchase_order
+    
+class PurchaseOrderStatusSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = PurchaseOrder
+        fields = [
+            'status'
+        ]

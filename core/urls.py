@@ -38,7 +38,7 @@ from apps.users.views import (
     PasswordResetConfirmView,
     SendDummyMessageView
 )
-from apps.inventory.views import CategoryDetailView, CategoryListCreateView, LowStockAlertsView, ProductDetailView, ProductListCreateView, PurchaseOrderDetailView, PurchaseOrderListCreateView, ReceivePurchaseOrderView, StockAdjustmentView, StockMovementListView, SupplierDetailView, SupplierListCreateView, UnitListView
+from apps.inventory.views import CategoryDetailView, CategoryListCreateView, LowStockAlertsView, ProductDetailView, ProductListCreateView, PurchaseOrderDetailView, PurchaseOrderListCreateView, PurchaseOrderStatusUpdateView, ReceivePurchaseOrderView, StockAdjustmentView, StockMovementListView, SupplierDetailView, SupplierListCreateView, UnitListView
 
 
 # Schema view configuration for Swagger
@@ -94,7 +94,7 @@ urlpatterns = [
     # Inventory URLs - Purchase Orders
     path('api/purchase-orders', PurchaseOrderListCreateView.as_view(), name='purchase-order-list-create'),
     path('api/purchase-orders/<int:pk>', PurchaseOrderDetailView.as_view(), name='purchase-order-detail'),
-    path('api/purchase-orders/<int:pk>/status', PurchaseOrderDetailView.as_view(), name='purchase-order-status-update'),
+    path('api/purchase-orders/<int:pk>/status', PurchaseOrderStatusUpdateView.as_view(), name='purchase-order-status-update'),
     path('api/purchase-orders/receive', ReceivePurchaseOrderView.as_view(), name='receive-purchase-order'),
 
     # Swagger URLs (accessible in any environment)

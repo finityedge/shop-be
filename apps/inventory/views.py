@@ -14,8 +14,9 @@ from .models import (
     Category, Product, Supplier, Stock,
     StockMovement, PurchaseOrder, PurchaseOrderItem, Unit
 )
+
 from .serializers import (
-    CategorySerializer, ProductListSerializer, ProductDetailSerializer,
+    CategorySerializer, ProductCreateSerializer, ProductListSerializer, ProductDetailSerializer, ProductUpdateSerializer, PurchaseOrderCreateSerializer, PurchaseOrderStatusSerializer,
     SupplierSerializer, StockSerializer, StockMovementSerializer,
     PurchaseOrderListSerializer, PurchaseOrderDetailSerializer,
     PurchaseOrderItemSerializer, UnitSerializer
@@ -64,8 +65,13 @@ class CategoryListCreateView(generics.ListCreateAPIView):
 
 class ProductListCreateView(generics.ListCreateAPIView):
     """API endpoint for listing and creating products."""
-    serializer_class = ProductListSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        """Return different serializers for list and create actions."""
+        if self.request.method == 'POST':
+            return ProductCreateSerializer
+        return ProductListSerializer
 
     def get_queryset(self):
         """Filter products by shop."""
@@ -74,28 +80,27 @@ class ProductListCreateView(generics.ListCreateAPIView):
     @swagger_auto_schema(
         operation_description='Create a new product with initial stock',
         tags=['Products'],
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'product': openapi.Schema(type=openapi.TYPE_OBJECT),
-                'initial_stock': openapi.Schema(type=openapi.TYPE_NUMBER)
-            }
-        )
+        request_body=ProductCreateSerializer,
+        responses={
+            201: openapi.Response(
+                description="Product created successfully",
+                schema=ProductListSerializer
+            )
+        }
     )
     @transaction.atomic
     def create(self, request, *args, **kwargs):
         try:
-            # Use ProductDetailSerializer for creation
-            product_serializer = ProductDetailSerializer(data=request.data)
-            product_serializer.is_valid(raise_exception=True)
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
             
             # Set shop and user fields
-            product_serializer.validated_data['shop'] = request.user.shop
-            product_serializer.validated_data['created_by'] = request.user
-            product_serializer.validated_data['modified_by'] = request.user
+            serializer.validated_data['shop'] = request.user.shop
+            serializer.validated_data['created_by'] = request.user
+            serializer.validated_data['modified_by'] = request.user
             
             # Create product
-            product = product_serializer.save()
+            product = serializer.save()
             
             # Create initial stock if provided
             initial_stock = request.data.get('initial_stock', 0)
@@ -118,9 +123,11 @@ class ProductListCreateView(generics.ListCreateAPIView):
                     modified_by=request.user
                 )
             
+            detail_serializer = ProductDetailSerializer(product)
+
             return Response({
                 'message': 'Product created successfully',
-                'data': product_serializer.data
+                'data': detail_serializer.data
             }, status=status.HTTP_201_CREATED)
             
         except ValidationError as e:
@@ -209,8 +216,13 @@ class StockAdjustmentView(views.APIView):
 
 class PurchaseOrderListCreateView(generics.ListCreateAPIView):
     """API endpoint for listing and creating purchase orders."""
-    serializer_class = PurchaseOrderListSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        """Return different serializers for list and create actions."""
+        if self.request.method == 'POST':
+            return PurchaseOrderCreateSerializer
+        return PurchaseOrderListSerializer
 
     def get_queryset(self):
         """Filter purchase orders by shop."""
@@ -219,18 +231,7 @@ class PurchaseOrderListCreateView(generics.ListCreateAPIView):
     @swagger_auto_schema(
         operation_description='Create a new purchase order with items',
         tags=['Purchase Orders'],
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            required=['supplier_id', 'items'],
-            properties={
-                'supplier_id': openapi.Schema(type=openapi.TYPE_INTEGER),
-                'expected_delivery_date': openapi.Schema(type=openapi.TYPE_STRING),
-                'items': openapi.Schema(
-                    type=openapi.TYPE_ARRAY,
-                    items=openapi.Schema(type=openapi.TYPE_OBJECT)
-                )
-            }
-        )
+        request_body=PurchaseOrderCreateSerializer
     )
     @transaction.atomic
     def create(self, request, *args, **kwargs):
@@ -284,6 +285,7 @@ class PurchaseOrderListCreateView(generics.ListCreateAPIView):
             purchase_order.tax_amount = subtotal * 0.1  # Example: 10% tax
             purchase_order.total = subtotal + purchase_order.tax_amount
             purchase_order.save()
+
             
             return Response({
                 'message': 'Purchase order created successfully',
@@ -332,14 +334,55 @@ class CategoryDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 class ProductDetailView(generics.RetrieveUpdateDestroyAPIView):
     """API endpoint for retrieving, updating, and deleting products."""
-    serializer_class = ProductDetailSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        """Return different serializers for different actions."""
+        if self.request.method in ['PUT', 'PATCH']:
+            return ProductUpdateSerializer
+        return ProductDetailSerializer
 
     def get_queryset(self):
         return Product.objects.filter(shop=self.request.user.shop)
 
+    @swagger_auto_schema(
+        operation_description='Update a product',
+        tags=['Products'],
+        request_body=ProductUpdateSerializer,
+        responses={
+            200: openapi.Response(
+                description="Product updated successfully",
+                schema=ProductDetailSerializer
+            )
+        }
+    )
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        
+        # Use UpdateSerializer for validation
+        update_serializer = ProductUpdateSerializer(
+            instance,
+            data=request.data,
+            partial=partial
+        )
+        update_serializer.is_valid(raise_exception=True)
+        
+        # Add modified_by to validated data
+        update_serializer.validated_data['modified_by'] = request.user
+        
+        # Perform update
+        self.perform_update(update_serializer)
+
+        # Return data using DetailSerializer
+        detail_serializer = ProductDetailSerializer(instance)
+        
+        return Response({
+            'message': 'Product updated successfully',
+            'data': detail_serializer.data
+        })
+
     def perform_update(self, serializer):
-        serializer.validated_data['modified_by'] = self.request.user
         serializer.save()
 
     def destroy(self, request, *args, **kwargs):
@@ -505,6 +548,58 @@ class PurchaseOrderDetailView(generics.RetrieveUpdateDestroyAPIView):
                 'error': 'Failed to update purchase order status',
                 'details': str(e)
             }, status=status.HTTP_400_BAD_REQUEST)
+        
+class PurchaseOrderStatusUpdateView(views.APIView):
+    """API endpoint for updating purchase order status."""
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.request.method == 'PATCH':
+            return PurchaseOrderStatusSerializer
+        return PurchaseOrderDetailSerializer
+
+    @swagger_auto_schema(
+        operation_description='Update purchase order status',
+        tags=['Purchase Orders'],
+        request_body=PurchaseOrderStatusSerializer
+    )
+    def patch(self, request, pk):
+        try:
+            purchase_order = get_object_or_404(PurchaseOrder, id=pk, shop=request.user.shop)
+            new_status = request.data.get('status')
+            
+            if not new_status:
+                raise ValidationError('Status is required')
+                
+            if new_status not in dict(PurchaseOrder.STATUS_CHOICES):
+                raise ValidationError('Invalid status')
+                
+            # Validate status transition
+            if purchase_order.status == 'RECEIVED':
+                raise ValidationError('Cannot change status of received orders')
+                
+            if purchase_order.status == 'CANCELLED':
+                raise ValidationError('Cannot change status of cancelled orders')
+            
+            purchase_order.status = new_status
+            purchase_order.modified_by = request.user
+            purchase_order.save()
+            
+            return Response({
+                'message': 'Purchase order status updated successfully',
+                'data': PurchaseOrderDetailSerializer(purchase_order).data
+            })
+            
+        except ValidationError as e:
+            return Response({
+                'error': 'Invalid data provided',
+                'details': e.detail
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                'error': 'Failed to update purchase order status',
+                'details': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class ReceivePurchaseOrderView(views.APIView):
     """API endpoint for receiving purchase order items."""
