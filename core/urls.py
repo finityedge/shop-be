@@ -29,6 +29,7 @@ from django.views.static import serve
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
+from apps.sale.views import CustomerDetailView, CustomerListCreateView, CustomerSalesHistoryView, PaymentDetailView, PaymentListCreateView, SaleDetailView, SaleListCreateView, SalePaymentsView, SaleReturnsView, SalesReturnApproveView, SalesReturnDetailView, SalesReturnListCreateView
 from core.views import index
 from apps.users.views import (
     UserRegistrationView,
@@ -96,6 +97,27 @@ urlpatterns = [
     path('api/purchase-orders/<int:pk>', PurchaseOrderDetailView.as_view(), name='purchase-order-detail'),
     path('api/purchase-orders/<int:pk>/status', PurchaseOrderStatusUpdateView.as_view(), name='purchase-order-status-update'),
     path('api/purchase-orders/receive', ReceivePurchaseOrderView.as_view(), name='receive-purchase-order'),
+
+    # Sales URLs - Customers
+    path('api/customers', CustomerListCreateView.as_view(), name='customer-list-create'),
+    path('api/customers/<int:pk>', CustomerDetailView.as_view(), name='customer-detail'),
+    path('api/customers/<int:pk>/sales', CustomerSalesHistoryView.as_view(), name='customer-sales-history'),
+
+    # Sales URLs - Sales
+    path('api/sales', SaleListCreateView.as_view(), name='sale-list-create'),
+    path('api/sales/<int:pk>', SaleDetailView.as_view(), name='sale-detail'),
+    path('api/sales/<int:pk>/payments', SalePaymentsView.as_view(), name='sale-payments'),
+    path('api/sales/<int:pk>/returns', SaleReturnsView.as_view(), name='sale-returns'),
+
+    # Sales URLs - Payments
+    path('api/payments', PaymentListCreateView.as_view(), name='payment-list-create'),
+    path('api/payments/<int:pk>', PaymentDetailView.as_view(), name='payment-detail'),
+
+    # Sales URLs - Returns
+    path('api/sales-returns', SalesReturnListCreateView.as_view(), name='sales-return-list-create'),
+    path('api/sales-returns/<int:pk>', SalesReturnDetailView.as_view(), name='sales-return-detail'),
+    path('api/sales-returns/<int:pk>/approve', SalesReturnApproveView.as_view(), name='sales-return-approve'),
+
 
     # Swagger URLs (accessible in any environment)
     path('swagger.<str:format>', schema_view.without_ui(cache_timeout=0), name='schema-json'),
