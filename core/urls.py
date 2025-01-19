@@ -29,6 +29,8 @@ from django.views.static import serve
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
+from apps.common.views import DashboardViewSet
+from apps.expense.views import ExpenseCategoryDetailView, ExpenseCategoryListCreateView, ExpenseDetailView, ExpenseListCreateView, ExpensePaymentCreateView, ExpenseStatusUpdateView, PaymentMethodDetailView, PaymentMethodListCreateView, RecurringExpenseLogListView
 from apps.sale.views import CustomerDetailView, CustomerListCreateView, CustomerSalesHistoryView, PaymentDetailView, PaymentListCreateView, SaleDetailView, SaleListCreateView, SalePaymentsView, SaleReturnsView, SalesReturnApproveView, SalesReturnDetailView, SalesReturnListCreateView
 from core.views import index
 from apps.users.views import (
@@ -118,6 +120,33 @@ urlpatterns = [
     path('api/sales-returns/<int:pk>', SalesReturnDetailView.as_view(), name='sales-return-detail'),
     path('api/sales-returns/<int:pk>/approve', SalesReturnApproveView.as_view(), name='sales-return-approve'),
 
+    # Expense URLs - Categories
+    path('api/expense-categories', ExpenseCategoryListCreateView.as_view(), name='expense-category-list-create'),
+    path('api/expense-categories/<int:pk>', ExpenseCategoryDetailView.as_view(), name='expense-category-detail'),
+
+    # Expense URLs - Payment Methods
+    path('api/expense/payment-methods', PaymentMethodListCreateView.as_view(), name='expense-payment-method-list-create'),
+    path('api/expense/payment-methods/<int:pk>', PaymentMethodDetailView.as_view(), name='expense-payment-method-detail'),
+
+    # Expense URLs - Expenses
+    path('api/expenses', ExpenseListCreateView.as_view(), name='expense-list-create'),
+    path('api/expenses/<int:pk>', ExpenseDetailView.as_view(), name='expense-detail'),
+    path('api/expenses/<int:pk>/status', ExpenseStatusUpdateView.as_view(), name='expense-status-update'),
+
+    # Expense URLs - Payments
+    path('api/expense-payments', ExpensePaymentCreateView.as_view(), name='expense-payment-create'),
+
+    # Expense URLs - Recurring Expenses
+    path('api/expenses/recurring-logs', RecurringExpenseLogListView.as_view(), name='recurring-expense-logs'),
+
+    # Analytics URLs
+    path('api/dashboard/summary-metrics/', DashboardViewSet.as_view({'get': 'summary_metrics'}), name='dashboard-summary-metrics'),
+    path('api/dashboard/sales-trends/', DashboardViewSet.as_view({'get': 'sales_trends'}), name='dashboard-sales-trends'),
+    path('api/dashboard/top-products/', DashboardViewSet.as_view({'get': 'top_products'}), name='dashboard-top-products'),
+    path('api/dashboard/inventory-status/', DashboardViewSet.as_view({'get': 'inventory_status'}), name='dashboard-inventory-status'),
+    path('api/dashboard/expense-analysis/', DashboardViewSet.as_view({'get': 'expense_analysis'}), name='dashboard-expense-analysis'),
+    path('api/dashboard/customer-insights/', DashboardViewSet.as_view({'get': 'customer_insights'}), name='dashboard-customer-insights'),
+    path('api/dashboard/payment-analytics/', DashboardViewSet.as_view({'get': 'payment_analytics'}), name='dashboard-payment-analytics'),
 
     # Swagger URLs (accessible in any environment)
     path('swagger.<str:format>', schema_view.without_ui(cache_timeout=0), name='schema-json'),

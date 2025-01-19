@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     'apps.shop',
     'apps.inventory',
     'apps.sale',
+    'apps.expense',
     'corsheaders',
 ]
 
