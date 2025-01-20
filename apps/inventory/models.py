@@ -51,6 +51,7 @@ class Product(TimeStampedModel):
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, related_name='products')
     description = models.TextField(blank=True)
     unit = models.ForeignKey(Unit, on_delete=models.PROTECT, related_name='products')
+    image_url = models.URLField(blank=True)
     
     # Pricing
     cost_price = models.DecimalField(max_digits=10, decimal_places=2)

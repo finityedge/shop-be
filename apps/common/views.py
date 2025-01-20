@@ -9,27 +9,20 @@ from django.utils import timezone
 import datetime
 from decimal import Decimal
 
+from apps.common.upload_service import upload_image
 from apps.expense.serializers import ExpenseListSerializer
 from apps.inventory.serializers import StockMovementSerializer
 from apps.sale.models import Sale, SaleItem, Payment, SalesReturn
 from apps.inventory.models import Product, Stock, StockMovement, PurchaseOrder
 from apps.expense.models import Expense
 from apps.common.pagination import CustomPagination
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
+from rest_framework import serializers
 
 class DashboardViewSet(ViewSet):
     permission_classes = [IsAuthenticated]
     
-    # def get_date_range(self, request):
-    #     """Helper method to get date range from query params"""
-    #     end_date = request.query_params.get('end_date', timezone.now().date())
-    #     start_date = request.query_params.get('start_date', end_date - timedelta(days=30))
-        
-    #     if isinstance(end_date, str):
-    #         end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
-    #     if isinstance(start_date, str):
-    #         start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
-            
-    #     return start_date, end_date
     def get_date_range(self, request):
         """
         Helper method to get date range from query params with proper error handling
@@ -327,3 +320,38 @@ class DashboardViewSet(ViewSet):
             'payment_methods': payment_methods,
             'outstanding_payments': outstanding
         })
+
+class ImageUploadSerializer(serializers.Serializer):
+    file = serializers.ImageField()
+
+class ImageUploadViewSet(ViewSet): 
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        request_body=ImageUploadSerializer,
+        responses={200: openapi.Response('Image URL', openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'image_url': openapi.Schema(type=openapi.TYPE_STRING, description='URL of the uploaded image')
+                }
+            ))}
+        )
+    @action(detail=False, methods=['post'])
+    def upload_image(self, request):
+        serializer = ImageUploadSerializer(data=request.data)
+        if serializer.is_valid():
+            file = serializer.validated_data['file']
+            try:
+                shop = request.user.shop
+                image_url = upload_image(file, folder=f"shop_{shop.shop_name}")
+                if 'error' in image_url:
+                    return Response({'error': image_url}, status=400)
+                return Response({'image_url': image_url})
+            except Exception as e:
+                return Response({'error': str(e)}, status=400)
+        return Response(serializer.errors, status=400)
+        
+        
+
+
+            

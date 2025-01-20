@@ -43,7 +43,7 @@ class ProductListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = [
-            'id', 'shop', 'name', 'sku', 'category_name', 'category', 'unit', 'cost_price',
+            'id', 'shop', 'name', 'sku', 'category_name', 'category', 'unit', 'image_url', 'cost_price',
             'unit_symbol', 'selling_price', 'current_stock', 'is_active'
         ]
 
@@ -55,7 +55,7 @@ class ProductCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = [
-            'name', 'sku', 'barcode', 'category', 'description', 'unit',
+            'name', 'sku', 'barcode', 'category', 'description', 'unit', 'image_url',
             'cost_price', 'selling_price', 'minimum_stock', 'maximum_stock', 'is_active',
             'created_at', 'modified_at', 'created_by', 'modified_by'
         ]
@@ -65,7 +65,7 @@ class ProductUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = [
-            'name', 'sku', 'barcode', 'category', 'description', 'unit',
+            'name', 'sku', 'barcode', 'category', 'description', 'unit', 'image_url',
             'cost_price', 'selling_price', 'minimum_stock', 'maximum_stock', 'is_active',
             'created_at', 'modified_at', 'created_by', 'modified_by'
         ]
@@ -87,7 +87,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'shop', 'name', 'sku', 'barcode', 'category', 'category_name',
             'description', 'unit', 'unit_details', 'cost_price', 'selling_price',
-            'minimum_stock', 'maximum_stock', 'current_stock', 'is_active',
+            'minimum_stock', 'maximum_stock', 'current_stock', 'is_active', 'image_url',
             'created_at', 'modified_at', 'created_by', 'modified_by'
         ]
         read_only_fields = ['created_at', 'modified_at', 'created_by', 'modified_by']
