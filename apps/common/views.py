@@ -18,16 +18,41 @@ from apps.common.pagination import CustomPagination
 class DashboardViewSet(ViewSet):
     permission_classes = [IsAuthenticated]
     
-    def get_date_range(self, request):
-        """Helper method to get date range from query params"""
-        end_date = request.query_params.get('end_date', timezone.now().date())
-        start_date = request.query_params.get('start_date', end_date - timedelta(days=30))
+    # def get_date_range(self, request):
+    #     """Helper method to get date range from query params"""
+    #     end_date = request.query_params.get('end_date', timezone.now().date())
+    #     start_date = request.query_params.get('start_date', end_date - timedelta(days=30))
         
-        if isinstance(end_date, str):
-            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
-        if isinstance(start_date, str):
-            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+    #     if isinstance(end_date, str):
+    #         end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+    #     if isinstance(start_date, str):
+    #         start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
             
+    #     return start_date, end_date
+    def get_date_range(self, request):
+        """Helper method to get date range from query params with proper error handling"""
+        today = timezone.now().date()
+        
+        # Get end_date from query params or use today
+        end_date = request.query_params.get('end_date', '')
+        if not end_date:
+            end_date = today
+        else:
+            try:
+                end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+            except ValueError:
+                end_date = today
+
+        # Get start_date from query params or default to 30 days before end_date
+        start_date = request.query_params.get('start_date', '')
+        if not start_date:
+            start_date = end_date - timedelta(days=30)
+        else:
+            try:
+                start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            except ValueError:
+                start_date = end_date - timedelta(days=30)
+                
         return start_date, end_date
         
     def get_comparison_stats(self, current_value, previous_value):
