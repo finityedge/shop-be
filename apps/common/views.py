@@ -5,7 +5,8 @@ from rest_framework.permissions import IsAuthenticated
 from django.db.models import Sum, Count, Avg, F, ExpressionWrapper, DecimalField
 from django.db.models.functions import TruncDate, TruncMonth, ExtractMonth
 from django.utils import timezone
-from datetime import datetime, timedelta
+# from datetime import datetime, timedelta
+import datetime
 from decimal import Decimal
 
 from apps.expense.serializers import ExpenseListSerializer
@@ -30,31 +31,38 @@ class DashboardViewSet(ViewSet):
             
     #     return start_date, end_date
     def get_date_range(self, request):
-        """Helper method to get date range from query params with proper error handling"""
+        """
+        Helper method to get date range from query params with proper error handling
+        Returns tuple of (start_date, end_date) as datetime.date objects
+        """
         today = timezone.now().date()
         
-        # Get end_date from query params or use today
-        end_date = request.query_params.get('end_date', '')
-        if not end_date:
-            end_date = today
-        else:
+        # Handle end_date
+        end_date_str = request.query_params.get('end_date')
+        if end_date_str:
             try:
-                end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
-            except ValueError:
+                end_date = datetime.datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            except (ValueError, TypeError):
                 end_date = today
-
-        # Get start_date from query params or default to 30 days before end_date
-        start_date = request.query_params.get('start_date', '')
-        if not start_date:
-            start_date = end_date - timedelta(days=30)
         else:
+            end_date = today
+            
+        # Handle start_date
+        start_date_str = request.query_params.get('start_date')
+        if start_date_str:
             try:
-                start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
-            except ValueError:
-                start_date = end_date - timedelta(days=30)
-                
-        return start_date, end_date
+                start_date = datetime.datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            except (ValueError, TypeError):
+                start_date = end_date - datetime.timedelta(days=30)
+        else:
+            start_date = end_date - datetime.timedelta(days=30)
         
+        # Ensure start_date is not after end_date
+        if start_date > end_date:
+            start_date = end_date - datetime.timedelta(days=30)
+            
+        return start_date, end_date
+
     def get_comparison_stats(self, current_value, previous_value):
         """Helper method to calculate comparison statistics"""
         if previous_value:
