@@ -83,7 +83,7 @@ class DashboardViewSet(ViewSet):
     def summary_metrics(self, request):
         """Key metrics for the summary cards"""
         start_date, end_date = self.get_date_range(request)
-        previous_start = start_date - timedelta(days=(end_date - start_date).days)
+        previous_start = start_date - datetime.timedelta(days=(end_date - start_date).days)
         shop = request.user.shop
         
         # Current period calculations
