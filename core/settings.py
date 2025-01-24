@@ -239,11 +239,11 @@ SWAGGER_SETTINGS = {
 }
 
 # Enable HTTPS-related settings
-# SECURE_SSL_REDIRECT = True  # Redirect HTTP to HTTPS
-# SESSION_COOKIE_SECURE = True  # Ensure session cookies are only sent over HTTPS
-# CSRF_COOKIE_SECURE = True  # Ensure CSRF cookies are only sent over HTTPS
+SECURE_SSL_REDIRECT = True  # Redirect HTTP to HTTPS
+SESSION_COOKIE_SECURE = True  # Ensure session cookies are only sent over HTTPS
+CSRF_COOKIE_SECURE = True  # Ensure CSRF cookies are only sent over HTTPS
 
 # If you're behind a reverse proxy (like Nginx)
-# SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'https://finityshop.vercel.app')
