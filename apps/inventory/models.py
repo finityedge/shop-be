@@ -24,6 +24,7 @@ class TimeStampedModel(models.Model):
 
 class Category(TimeStampedModel):
     """Product categories"""
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='categories')
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
     parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='children')

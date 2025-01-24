@@ -25,9 +25,11 @@ from .serializers import (
 
 class CategoryListCreateView(generics.ListCreateAPIView):
     """API endpoint for listing and creating categories."""
-    queryset = Category.objects.all()
     serializer_class = CategorySerializer
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Category.objects.filter(shop=self.request.user.shop)
 
     @swagger_auto_schema(
         operation_description='List all categories or create a new one',
@@ -43,7 +45,8 @@ class CategoryListCreateView(generics.ListCreateAPIView):
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             
-            # Set created_by and modified_by
+            # Set created_by and modified_by and shop
+            serializer.validated_data['shop'] = request.user.shop
             serializer.validated_data['created_by'] = request.user
             serializer.validated_data['modified_by'] = request.user
             
