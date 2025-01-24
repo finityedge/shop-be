@@ -1,3 +1,4 @@
+from decimal import Decimal
 from rest_framework import generics, status, views, filters
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError, PermissionDenied
@@ -258,16 +259,17 @@ class PurchaseOrderListCreateView(generics.ListCreateAPIView):
             if not items_data:
                 raise ValidationError('No items provided')
             
-            subtotal = 0
+            subtotal = Decimal('0')
             for item_data in items_data:
                 product = get_object_or_404(
                     Product, 
-                    id=item_data['product_id'],
+                    id=item_data['product'],
                     shop=request.user.shop
                 )
                 
-                quantity = item_data['quantity']
-                unit_price = item_data['unit_price']
+                # Explicitly convert to Decimal
+                quantity = Decimal(str(item_data['quantity']))
+                unit_price = Decimal(str(item_data['unit_price']))
                 
                 PurchaseOrderItem.objects.create(
                     purchase_order=purchase_order,
@@ -280,13 +282,13 @@ class PurchaseOrderListCreateView(generics.ListCreateAPIView):
                 
                 subtotal += quantity * unit_price
             
-            # Update PO totals
+            # Update PO totals with Decimal
+            tax_rate = Decimal('0.1')  # 10% tax as Decimal
             purchase_order.subtotal = subtotal
-            purchase_order.tax_amount = subtotal * 0.1  # Example: 10% tax
+            purchase_order.tax_amount = subtotal * tax_rate
             purchase_order.total = subtotal + purchase_order.tax_amount
             purchase_order.save()
 
-            
             return Response({
                 'message': 'Purchase order created successfully',
                 'data': PurchaseOrderDetailSerializer(purchase_order).data

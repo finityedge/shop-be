@@ -175,6 +175,11 @@ class UserLoginSerializer(serializers.Serializer):
             if not user.is_active:
                 raise serializers.ValidationError("User account is not active.")
             
+            if user.is_verified and user.verification_token:
+                user.verification_token = None
+                user.verification_token_created_at = None
+                user.save()
+            
             data['user'] = user
             return data
         

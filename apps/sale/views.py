@@ -114,11 +114,13 @@ class CustomerSalesHistoryView(BaseAPIView, generics.ListAPIView):
 
 class SaleListCreateView(BaseAPIView, generics.ListCreateAPIView):
     """API endpoint for listing and creating sales."""
-    queryset = Sale.objects.all()
     filterset_fields = ['payment_status', 'payment_method', 'sale_date']
     search_fields = ['invoice_number', 'customer__name']
     ordering_fields = ['sale_date', 'total', 'created_at']
     ordering = ['-created_at']
+
+    def get_queryset(self):
+        return Sale.objects.filter(shop=self.request.user.shop)
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -152,7 +154,7 @@ class SaleListCreateView(BaseAPIView, generics.ListCreateAPIView):
             sequence = 1
             
         # Generate new invoice number with 5-digit sequence
-        invoice_number = f"{prefix}{str(sequence).zfill(5)}"
+        invoice_number = f"{prefix}{str(sequence).zfill(5)}-{shop.id}"
         return invoice_number
 
 
@@ -221,15 +223,17 @@ class SaleReturnsView(BaseAPIView, generics.ListAPIView):
 
     def get_queryset(self):
         sale = get_object_or_404(Sale, pk=self.kwargs['pk'])
-        return SalesReturn.objects.filter(sale=sale)
+        return SalesReturn.objects.filter(sale=sale, shop=self.request.user.shop)
 
 class PaymentListCreateView(BaseAPIView, generics.ListCreateAPIView):
     """API endpoint for listing and creating payments."""
-    queryset = Payment.objects.all()
     filterset_fields = ['payment_method', 'payment_date']
     search_fields = ['sale__invoice_number', 'reference_number']
     ordering_fields = ['payment_date', 'amount']
     ordering = ['-payment_date']
+
+    def get_queryset(self):
+        return Payment.objects.filter(shop=self.request.user.shop)
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -246,6 +250,9 @@ class PaymentListCreateView(BaseAPIView, generics.ListCreateAPIView):
         try:
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
+
+            serializer.validated_data['shop'] = request.user.shop
+
             payment = serializer.save(
                 created_by=request.user,
                 modified_by=request.user
@@ -279,16 +286,20 @@ class PaymentListCreateView(BaseAPIView, generics.ListCreateAPIView):
 
 class PaymentDetailView(BaseAPIView, generics.RetrieveAPIView):
     """API endpoint for retrieving payment details."""
-    queryset = Payment.objects.all()
     serializer_class = PaymentDetailSerializer
+
+    def get_queryset(self):
+        return Payment.objects.filter(shop=self.request.user.shop)
 
 class SalesReturnListCreateView(BaseAPIView, generics.ListCreateAPIView):
     """API endpoint for listing and creating sales returns."""
-    queryset = SalesReturn.objects.all()
     filterset_fields = ['status', 'return_date']
     search_fields = ['sale__invoice_number']
     ordering_fields = ['return_date', 'total']
     ordering = ['-created_at']
+
+    def get_queryset(self):
+        return SalesReturn.objects.filter(shop=self.request.user.shop)
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -305,6 +316,8 @@ class SalesReturnListCreateView(BaseAPIView, generics.ListCreateAPIView):
         try:
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
+
+            serializer.validated_data['shop'] = request.user.shop
             
             sales_return = serializer.save(
                 created_by=request.user,
@@ -334,8 +347,10 @@ class SalesReturnListCreateView(BaseAPIView, generics.ListCreateAPIView):
 
 class SalesReturnDetailView(BaseAPIView, generics.RetrieveAPIView):
     """API endpoint for retrieving sales return details."""
-    queryset = SalesReturn.objects.all()
     serializer_class = SalesReturnDetailSerializer
+
+    def get_queryset(self):
+        return SalesReturn.objects.filter(shop=self.request.user.shop)
 
 class SalesReturnApproveView(BaseAPIView, views.APIView):
     """API endpoint for approving sales returns."""

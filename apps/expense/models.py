@@ -86,6 +86,7 @@ class Expense(TimeStampedModel):
 
 class ExpensePayment(TimeStampedModel):
     """Record of payments made against expenses"""
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='expense_payments')
     expense = models.ForeignKey(Expense, on_delete=models.CASCADE, related_name='payments')
     payment_method = models.ForeignKey(PaymentMethod, on_delete=models.PROTECT)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
@@ -111,6 +112,7 @@ class ExpensePayment(TimeStampedModel):
 
 class RecurringExpenseLog(TimeStampedModel):
     """Log of automatically generated recurring expenses"""
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='recurring_logs')
     original_expense = models.ForeignKey(Expense, on_delete=models.CASCADE, related_name='recurring_logs')
     generated_expense = models.ForeignKey(Expense, on_delete=models.CASCADE, related_name='recurring_source')
     generation_date = models.DateTimeField(auto_now_add=True)

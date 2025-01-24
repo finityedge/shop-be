@@ -162,7 +162,7 @@ class ExpenseListCreateView(generics.ListCreateAPIView):
                 
                 # Generate expense number
                 last_expense = Expense.objects.filter(shop=request.user.shop).order_by('-id').first()
-                expense_number = f"EXP-{(last_expense.id + 1 if last_expense else 1):06d}"
+                expense_number = f"EXP-{(last_expense.id + 1 if last_expense else 1):06d}-{request.user.shop.id:03d}"
                 serializer.validated_data['expense_number'] = expense_number
                 
                 expense = serializer.save()
@@ -223,6 +223,7 @@ class ExpensePaymentCreateView(generics.CreateAPIView):
                 serializer = self.get_serializer(data=request.data)
                 serializer.is_valid(raise_exception=True)
                 
+                serializer.validated_data['shop'] = request.user.shop
                 serializer.validated_data['created_by'] = request.user
                 serializer.validated_data['modified_by'] = request.user
                 

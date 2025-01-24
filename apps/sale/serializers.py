@@ -122,7 +122,7 @@ class PaymentDetailSerializer(serializers.ModelSerializer):
 class PaymentCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payment
-        exclude = ['created_at', 'modified_at', 'created_by', 'modified_by']
+        exclude = ['shop', 'created_at', 'modified_at', 'created_by', 'modified_by']
 
     def validate(self, data):
         sale = data['sale']
@@ -180,11 +180,13 @@ class SalesReturnCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SalesReturn
-        exclude = ['tax_amount', 'subtotal', 'total', 'created_at', 'modified_at', 'created_by', 'modified_by']
+        exclude = ['shop', 'tax_amount', 'subtotal', 'total', 'created_at', 'modified_at', 'created_by', 'modified_by']
 
     def create(self, validated_data):
         try:
             items_data = validated_data.pop('items')
+
+            validated_data['shop'] = self.context['request'].user.shop
 
             sales_return = SalesReturn.objects.create(**validated_data)
             

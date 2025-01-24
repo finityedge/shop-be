@@ -83,7 +83,10 @@ class UserRegistrationView(generics.CreateAPIView):
                 settings.TWILIO_AUTH_TOKEN, 
                 settings.TWILIO_PHONE_NUMBER
             )
-            verification_url = f'http://localhost:3000/api/verify/{user.verification_token}'
+
+            frontend_url = settings.FRONTEND_URL
+
+            verification_url = f'{frontend_url}/#/verify?token={user.verification_token}'
             message = f"Welcome! Verify your account: {verification_url}"
             
             whatsapp_helper.send_whatsapp_message(f"whatsapp:{user.phone}", message)
@@ -196,8 +199,8 @@ class VerifyUserView(views.APIView):
             #     )
 
             user.is_verified = True
-            user.verification_token = None
-            user.verification_token_created_at = None
+            # user.verification_token = None
+            # user.verification_token_created_at = None
             user.save()
 
             return Response(

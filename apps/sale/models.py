@@ -85,6 +85,7 @@ class SaleItem(TimeStampedModel):
 
 class Payment(TimeStampedModel):
     """Payment records for sales"""
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='payments')
     sale = models.ForeignKey(Sale, on_delete=models.CASCADE, related_name='payments')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     payment_date = models.DateField()
@@ -104,6 +105,7 @@ class SalesReturn(TimeStampedModel):
         ('REJECTED', 'Rejected'),
     ]
     
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='sales_returns')
     sale = models.ForeignKey(Sale, on_delete=models.CASCADE, related_name='returns')
     return_date = models.DateField()
     status = models.CharField(max_length=10, choices=RETURN_STATUS, default='PENDING')

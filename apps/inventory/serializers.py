@@ -169,11 +169,13 @@ class PurchaseOrderListSerializer(serializers.ModelSerializer):
 
 class PurchaseOrderCreateSerializer(serializers.ModelSerializer):
     items = PurchaseOrderItemCreateSerializer(many=True)
+    # supplier = SupplierSerializer(read_only=True)
+    supplier_id = serializers.PrimaryKeyRelatedField(queryset=Supplier.objects.all(), write_only=True)
 
     class Meta:
         model = PurchaseOrder
         fields = [
-            'supplier', 'expected_delivery_date', 'notes', 'items'
+            'supplier_id', 'expected_delivery_date', 'notes', 'items'
         ]
 
 class PurchaseOrderDetailSerializer(serializers.ModelSerializer):
