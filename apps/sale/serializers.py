@@ -56,15 +56,18 @@ class SaleItemDetailSerializer(serializers.ModelSerializer):
 
 # Sale Serializers
 class SaleListSerializer(serializers.ModelSerializer):
-    customer_name = serializers.CharField(source='customer.name')
+    customer_name = serializers.SerializerMethodField()
     
     class Meta:
         model = Sale
         fields = ['id', 'invoice_number', 'sale_date', 'customer_name', 
                  'total', 'payment_status']
+    
+    def get_customer_name(self, obj):
+        return obj.customer.name if obj.customer else None
 
 class SaleDetailSerializer(serializers.ModelSerializer):
-    customer = CustomerDetailSerializer()
+    customer = CustomerDetailSerializer(required=False, allow_null=True)
     items = SaleItemDetailSerializer(many=True, read_only=True)
     balance_due = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
 
