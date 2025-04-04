@@ -70,6 +70,10 @@ class CategoryListCreateView(generics.ListCreateAPIView):
 class ProductListCreateView(generics.ListCreateAPIView):
     """API endpoint for listing and creating products."""
     permission_classes = [IsAuthenticated]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['name', 'barcode', 'sku', 'description']
+    ordering_fields = ['name', 'created_at', 'selling_price', 'cost_price']
+    ordering = ['name']  # Default ordering
 
     def get_serializer_class(self):
         """Return different serializers for list and create actions."""
@@ -78,11 +82,88 @@ class ProductListCreateView(generics.ListCreateAPIView):
         return ProductListSerializer
 
     def get_queryset(self):
-        """Filter products by shop."""
-        return Product.objects.filter(shop=self.request.user.shop)
+        """
+        Filter products by shop (mandatory) and additional query parameters.
+        Supports filtering by barcode, SKU, category, stock levels, and more.
+        """
+        # Shop filtering is mandatory for multitenancy
+        queryset = Product.objects.filter(shop=self.request.user.shop)
+        
+        # Add select_related and prefetch_related for performance
+        queryset = queryset.select_related('category', 'unit', 'stock').prefetch_related('stock_movements')
+        
+        # Exact match filters
+        exact_filters = {}
+        
+        # Barcode (exact match)
+        barcode = self.request.query_params.get('barcode')
+        if barcode:
+            exact_filters['barcode'] = barcode
+            
+        # SKU (exact match)
+        sku = self.request.query_params.get('sku')
+        if sku:
+            exact_filters['sku'] = sku
+            
+        # Apply exact filters if any
+        if exact_filters:
+            queryset = queryset.filter(**exact_filters)
+            
+        # Category filter
+        category_id = self.request.query_params.get('category_id')
+        if category_id:
+            queryset = queryset.filter(category_id=category_id)
+            
+        # Active status filter
+        is_active = self.request.query_params.get('is_active')
+        if is_active is not None:
+            is_active_bool = is_active.lower() == 'true'
+            queryset = queryset.filter(is_active=is_active_bool)
+            
+        # Price range filters
+        min_price = self.request.query_params.get('min_price')
+        if min_price:
+            queryset = queryset.filter(selling_price__gte=min_price)
+            
+        max_price = self.request.query_params.get('max_price')
+        if max_price:
+            queryset = queryset.filter(selling_price__lte=max_price)
+            
+        # Stock level filters
+        low_stock = self.request.query_params.get('low_stock')
+        if low_stock is not None and low_stock.lower() == 'true':
+            queryset = queryset.filter(
+                Q(stock__quantity__lte=F('minimum_stock')) & 
+                ~Q(stock__quantity=None)
+            )
+            
+        min_stock = self.request.query_params.get('min_stock')
+        if min_stock:
+            queryset = queryset.filter(stock__quantity__gte=min_stock)
+            
+        max_stock = self.request.query_params.get('max_stock')
+        if max_stock:
+            queryset = queryset.filter(stock__quantity__lte=max_stock)
+            
+        # Filter by unit
+        unit_id = self.request.query_params.get('unit_id')
+        if unit_id:
+            queryset = queryset.filter(unit_id=unit_id)
+            
+        # Date filters
+        created_after = self.request.query_params.get('created_after')
+        if created_after:
+            queryset = queryset.filter(created_at__gte=created_after)
+            
+        created_before = self.request.query_params.get('created_before')
+        if created_before:
+            queryset = queryset.filter(created_at__lte=created_before)
+            
+        # Return the filtered queryset
+        return queryset
 
     @swagger_auto_schema(
-        operation_description='Create a new product with initial stock',
+        operation_description='List and filter products or create a new product',
         tags=['Products'],
         request_body=ProductCreateSerializer,
         responses={
@@ -90,7 +171,23 @@ class ProductListCreateView(generics.ListCreateAPIView):
                 description="Product created successfully",
                 schema=ProductListSerializer
             )
-        }
+        },
+        manual_parameters=[
+            openapi.Parameter('barcode', openapi.IN_QUERY, description="Filter by exact barcode match", type=openapi.TYPE_STRING),
+            openapi.Parameter('sku', openapi.IN_QUERY, description="Filter by exact SKU match", type=openapi.TYPE_STRING),
+            openapi.Parameter('category_id', openapi.IN_QUERY, description="Filter by category ID", type=openapi.TYPE_INTEGER),
+            openapi.Parameter('unit_id', openapi.IN_QUERY, description="Filter by unit ID", type=openapi.TYPE_INTEGER),
+            openapi.Parameter('is_active', openapi.IN_QUERY, description="Filter by active status (true/false)", type=openapi.TYPE_BOOLEAN),
+            openapi.Parameter('min_price', openapi.IN_QUERY, description="Filter by minimum selling price", type=openapi.TYPE_NUMBER),
+            openapi.Parameter('max_price', openapi.IN_QUERY, description="Filter by maximum selling price", type=openapi.TYPE_NUMBER),
+            openapi.Parameter('low_stock', openapi.IN_QUERY, description="Filter to show only products with stock below minimum (true/false)", type=openapi.TYPE_BOOLEAN),
+            openapi.Parameter('min_stock', openapi.IN_QUERY, description="Filter by minimum stock quantity", type=openapi.TYPE_NUMBER),
+            openapi.Parameter('max_stock', openapi.IN_QUERY, description="Filter by maximum stock quantity", type=openapi.TYPE_NUMBER),
+            openapi.Parameter('created_after', openapi.IN_QUERY, description="Filter by creation date (format: YYYY-MM-DD)", type=openapi.TYPE_STRING, format=openapi.FORMAT_DATE),
+            openapi.Parameter('created_before', openapi.IN_QUERY, description="Filter by creation date (format: YYYY-MM-DD)", type=openapi.TYPE_STRING, format=openapi.FORMAT_DATE),
+            openapi.Parameter('search', openapi.IN_QUERY, description="Search in name, barcode, SKU and description fields", type=openapi.TYPE_STRING),
+            openapi.Parameter('ordering', openapi.IN_QUERY, description="Order results by field (prefix with '-' for descending order)", type=openapi.TYPE_STRING),
+        ]
     )
     @transaction.atomic
     def create(self, request, *args, **kwargs):
@@ -144,7 +241,7 @@ class ProductListCreateView(generics.ListCreateAPIView):
                 'error': 'Failed to create product',
                 'details': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+        
 class StockAdjustmentView(views.APIView):
     """API endpoint for adjusting stock levels."""
     permission_classes = [IsAuthenticated]
