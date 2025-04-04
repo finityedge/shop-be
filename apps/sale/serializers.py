@@ -81,23 +81,39 @@ class SaleCreateSerializer(serializers.ModelSerializer):
         exclude = ['shop', 'subtotal', 'discount_amount', 'payment_status', 'payment_method', 'paid_amount', 'total', 'invoice_number', 'created_at', 'modified_at', 'created_by', 'modified_by']
 
     def create(self, validated_data):
-        items_data = validated_data.pop('items')
+        try:
+            items_data = validated_data.pop('items')
 
-        sale = Sale.objects.create(**validated_data)
-        
-        # Calculate totals
-        subtotal = 0
-        for item_data in items_data:
-            item = SaleItem.objects.create(sale=sale, **item_data)
-            subtotal += item.total
+            try:
+                sale = Sale.objects.create(**validated_data)
+            except Exception as e:
+                raise serializers.ValidationError(f"Error creating sale: {str(e)}")
+            
+            # Calculate totals
+            subtotal = 0
+            for item_data in items_data:
+                try:
+                    item = SaleItem.objects.create(sale=sale, **item_data)
+                    subtotal += item.total
+                except Exception as e:
+                    # Delete the sale if item creation fails
+                    sale.delete()
+                    raise serializers.ValidationError(f"Error creating sale item: {str(e)}")
 
-        # Update sale totals
-        sale.subtotal = subtotal
-        sale.tax_amount = subtotal * Decimal(0.1)  # Assuming 10% tax
-        sale.total = sale.subtotal + sale.tax_amount - sale.discount_amount
-        sale.save()
+            # Update sale totals
+            try:
+                sale.subtotal = subtotal
+                sale.tax_amount = subtotal * Decimal(0.1)  # Assuming 10% tax
+                sale.total = sale.subtotal + sale.tax_amount - sale.discount_amount
+                sale.save()
+            except Exception as e:
+                raise serializers.ValidationError(f"Error updating sale totals: {str(e)}")
 
-        return sale
+            return sale
+            
+        except Exception as e:
+            # Catch any other unexpected errors
+            raise serializers.ValidationError(f"Unexpected error in sale creation: {str(e)}")
 
 class SaleUpdateSerializer(serializers.ModelSerializer):
     class Meta:

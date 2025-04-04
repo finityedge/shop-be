@@ -35,7 +35,7 @@ class Sale(TimeStampedModel):
     ]
 
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='sales')
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='sales')
+    customer = models.ForeignKey(Customer, null=True, on_delete=models.CASCADE, related_name='sales')
     invoice_number = models.CharField(max_length=50, unique=True)
     sale_date = models.DateField()
     due_date = models.DateField(null=True, blank=True)

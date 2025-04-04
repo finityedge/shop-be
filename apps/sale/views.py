@@ -129,32 +129,58 @@ class SaleListCreateView(BaseAPIView, generics.ListCreateAPIView):
     
     def generate_invoice_number(self, shop):
         """
-        Generates a unique invoice number in the format: SHOP-YYYY-MM-XXXXX
-        Where XXXXX is a sequential number padded with zeros
+        Generates a unique invoice number with randomness to reduce collision probability
+        Format: SHOP-YYYY-MM-XXXXX-RANDOM
         """
+        import random
+        import string
+        import uuid
+        import time
+        
         today = datetime.datetime.now()
         year = today.strftime('%Y')
         month = today.strftime('%m')
+        day = today.strftime('%d')
         
         # Get the prefix for the current shop
         shop_prefix = shop.code if hasattr(shop, 'code') else 'INV'
         
-        # Find the last invoice number for this shop, year and month
-        prefix = f"{shop_prefix}-{year}-{month}-"
+        # Generate a timestamp component (milliseconds)
+        timestamp = int(time.time() * 1000) % 10000
+        
+        # Generate a random alphanumeric string (4 characters)
+        random_chars = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+        
+        # Generate a random number between 1000-9999
+        random_num = random.randint(1000, 9999)
+        
+        # Take the first 4 characters of a UUID (without hyphens)
+        uuid_segment = str(uuid.uuid4()).replace('-', '')[:4]
+        
+        # Find the last invoice number for this shop and date to maintain some sequentiality
+        prefix = f"{shop_prefix}-{year}-{month}"
         last_invoice = Sale.objects.filter(
             shop=shop,
             invoice_number__startswith=prefix
         ).aggregate(Max('invoice_number'))['invoice_number__max']
         
         if last_invoice:
-            # Extract the sequence number and increment it
-            sequence = int(last_invoice.split('-')[-1]) + 1
+            try:
+                # Try to extract the sequence number and increment it
+                parts = last_invoice.split('-')
+                if len(parts) >= 4:
+                    sequence = int(parts[3]) + 1
+                else:
+                    sequence = 1
+            except (ValueError, IndexError):
+                sequence = 1
         else:
             # Start with 1 if no previous invoice exists
             sequence = 1
-            
-        # Generate new invoice number with 5-digit sequence
-        invoice_number = f"{prefix}{str(sequence).zfill(5)}-{shop.id}"
+        
+        # Generate final invoice number
+        invoice_number = f"{shop_prefix}-{year}{month}{day}-{sequence:05d}-{random_chars}{timestamp}"
+        
         return invoice_number
 
 
