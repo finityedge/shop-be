@@ -106,7 +106,8 @@ class SaleCreateSerializer(serializers.ModelSerializer):
             # Update sale totals
             try:
                 sale.subtotal = subtotal
-                sale.tax_amount = subtotal * Decimal(0.1)  # Assuming 10% tax
+                # sale.tax_amount = subtotal * Decimal(0.1)  # Assuming 10% tax
+                sale.tax_amount = 0  # TODO: Set tax amount to 0 for now
                 sale.total = sale.subtotal + sale.tax_amount - sale.discount_amount
                 sale.save()
             except Exception as e:
