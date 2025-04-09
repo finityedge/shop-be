@@ -3,7 +3,8 @@ from datetime import timedelta
 from rest_framework import serializers
 from django.contrib.auth import get_user_model, authenticate
 from django.conf import settings
-from apps.shop.models import Shop
+from django.db import transaction
+from apps.shop.models import Shop, ShopUser
 from rest_framework_simplejwt.tokens import RefreshToken
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
@@ -85,6 +86,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(f"Invalid phone number: {e}")
         return value
 
+    @transaction.atomic
     def create(self, validated_data):
         """
         Create user and associated shop.
@@ -95,21 +97,30 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         address = validated_data.pop('address', None)
         validated_data.pop('confirm_password', None)
 
+        # Set role to admin for users who create shops
+        validated_data['role'] = User.ROLE_ADMIN
+
         # Create user
         user = User.objects.create_user(**validated_data)
 
         # Create associated shop
         if all([shop_name, shop_type, address]):
             try:
-                Shop.objects.create(
-                    owner=user,
+                # Create shop
+                shop = Shop.objects.create(
                     shop_name=shop_name,
                     shop_type=shop_type,
-                    address=address
+                    address=address,
+                    created_by=user
+                )
+                
+                # Create shop user relationship
+                ShopUser.objects.create(
+                    user=user,
+                    shop=shop
                 )
             except Exception as e:
-                # If shop creation fails, delete the user
-                user.delete()
+                # Transaction will rollback automatically
                 raise serializers.ValidationError({"shop_creation": str(e)})
 
         return user
@@ -126,14 +137,14 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         
         # Add shop details to response
         try:
-            shop = instance.shop
+            shop = instance.shop_user.shop
             rep['shop'] = {
                 'shop_name': shop.shop_name,
                 'shop_type': shop.shop_type,
                 'address': shop.address,
                 'is_verified': shop.is_verified
             }
-        except Shop.DoesNotExist:
+        except (ShopUser.DoesNotExist, AttributeError):
             rep['shop'] = None
         
         return rep
@@ -188,21 +199,34 @@ class UserLoginSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         """
-        Generate authentication tokens.
+        Generate authentication tokens and include user role information.
         """
         user = validated_data['user']
         
         # Generate tokens
         refresh = RefreshToken.for_user(user)
         
+        # Get user shop and role info
+        shop_info = None
+        
+        try:
+            shop = user.shop_user.shop
+            shop_info = {
+                'shop_id': shop.id,
+                'shop_name': shop.shop_name,
+            }
+        except (ShopUser.DoesNotExist, AttributeError):
+            pass
+        
         return {
             'user_id': user.id,
             'phone': user.phone,
             'username': user.username,
+            'role': user.get_role_display(),
+            'shop': shop_info,
             'access_token': str(refresh.access_token),
             'refresh_token': str(refresh)
         }
-
 class PasswordResetRequestSerializer(serializers.Serializer):
     """
     Serializer for initiating password reset process.

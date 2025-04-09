@@ -31,7 +31,7 @@ class ExpenseCategoryListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         """Filter categories by shop."""
-        return ExpenseCategory.objects.filter(shop=self.request.user.shop)
+        return ExpenseCategory.objects.filter(shop=self.request.user.shop_user.shop)
 
     @swagger_auto_schema(
         operation_description='List all expense categories or create a new one',
@@ -73,7 +73,7 @@ class ExpenseCategoryDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return ExpenseCategory.objects.filter(shop=self.request.user.shop)
+        return ExpenseCategory.objects.filter(shop=self.request.user.shop_user.shop)
 
     def perform_update(self, serializer):
         serializer.validated_data['modified_by'] = self.request.user
@@ -87,7 +87,7 @@ class PaymentMethodListCreateView(generics.ListCreateAPIView):
     search_fields = ['name']
 
     def get_queryset(self):
-        return PaymentMethod.objects.filter(shop=self.request.user.shop)
+        return PaymentMethod.objects.filter(shop=self.request.user.shop_user.shop)
 
     def perform_create(self, serializer):
         serializer.validated_data['created_by'] = self.request.user
@@ -100,7 +100,7 @@ class PaymentMethodDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return PaymentMethod.objects.filter(shop=self.request.user.shop)
+        return PaymentMethod.objects.filter(shop=self.request.user.shop_user.shop)
 
     def perform_update(self, serializer):
         serializer.validated_data['modified_by'] = self.request.user
@@ -121,7 +121,7 @@ class ExpenseListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         """Filter expenses by shop and optional query parameters."""
-        queryset = Expense.objects.filter(shop=self.request.user.shop)
+        queryset = Expense.objects.filter(shop=self.request.user.shop_user.shop)
         
         # Filter by date range
         start_date = self.request.query_params.get('start_date')
@@ -193,7 +193,7 @@ class ExpenseDetailView(generics.RetrieveUpdateDestroyAPIView):
         return ExpenseDetailSerializer
 
     def get_queryset(self):
-        return Expense.objects.filter(shop=self.request.user.shop)
+        return Expense.objects.filter(shop=self.request.user.shop_user.shop)
 
     def perform_update(self, serializer):
         serializer.validated_data['modified_by'] = self.request.user
@@ -251,7 +251,7 @@ class ExpenseStatusUpdateView(generics.UpdateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Expense.objects.filter(shop=self.request.user.shop)
+        return Expense.objects.filter(shop=self.request.user.shop_user.shop)
 
     def perform_update(self, serializer):
         serializer.validated_data['modified_by'] = self.request.user
@@ -266,5 +266,5 @@ class RecurringExpenseLogListView(generics.ListAPIView):
 
     def get_queryset(self):
         return RecurringExpenseLog.objects.filter(
-            original_expense__shop=self.request.user.shop
+            original_expense__shop=self.request.user.shop_user.shop
         )

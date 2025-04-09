@@ -13,6 +13,22 @@ class User(AbstractUser):
     verification_token = models.CharField(max_length=100, null=True, blank=True)
     otp = models.CharField(max_length=6, null=True, blank=True)
     otp_expiry = models.DateTimeField(null=True, blank=True)
+    
+    # Add role field directly to user
+    ROLE_ADMIN = 'admin'
+    ROLE_SALES_REP = 'sales_rep'
+    
+    ROLE_CHOICES = [
+        (ROLE_ADMIN, _('Admin')),
+        (ROLE_SALES_REP, _('Sales Representative')),
+    ]
+    
+    role = models.CharField(
+        max_length=20, 
+        choices=ROLE_CHOICES,
+        default=ROLE_ADMIN,
+        help_text=_('User role within their shop')
+    )
 
     USERNAME_FIELD = 'username'
     REQUIRED_FIELDS = ['name', 'phone']
@@ -22,4 +38,3 @@ class User(AbstractUser):
     
     def generate_verification_token(self):
         self.verification_token = secrets.token_urlsafe(32)
-    

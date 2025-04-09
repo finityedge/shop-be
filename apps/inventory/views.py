@@ -29,7 +29,7 @@ class CategoryListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Category.objects.filter(shop=self.request.user.shop)
+        return Category.objects.filter(shop=self.request.user.shop_user.shop)
 
     @swagger_auto_schema(
         operation_description='List all categories or create a new one',
@@ -87,7 +87,7 @@ class ProductListCreateView(generics.ListCreateAPIView):
         Supports filtering by barcode, SKU, category, stock levels, and more.
         """
         # Shop filtering is mandatory for multitenancy
-        queryset = Product.objects.filter(shop=self.request.user.shop)
+        queryset = Product.objects.filter(shop=self.request.user.shop_user.shop)
         
         # Add select_related and prefetch_related for performance
         queryset = queryset.select_related('category', 'unit', 'stock').prefetch_related('stock_movements')
@@ -327,7 +327,7 @@ class PurchaseOrderListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         """Filter purchase orders by shop."""
-        return PurchaseOrder.objects.filter(shop=self.request.user.shop)
+        return PurchaseOrder.objects.filter(shop=self.request.user.shop_user.shop)
 
     @swagger_auto_schema(
         operation_description='Create a new purchase order with items',
@@ -445,7 +445,7 @@ class ProductDetailView(generics.RetrieveUpdateDestroyAPIView):
         return ProductDetailSerializer
 
     def get_queryset(self):
-        return Product.objects.filter(shop=self.request.user.shop)
+        return Product.objects.filter(shop=self.request.user.shop_user.shop)
 
     @swagger_auto_schema(
         operation_description='Update a product',
@@ -517,10 +517,10 @@ class SupplierListCreateView(generics.ListCreateAPIView):
     search_fields = ['name', 'contact_person', 'email']
 
     def get_queryset(self):
-        return Supplier.objects.filter(shop=self.request.user.shop)
+        return Supplier.objects.filter(shop=self.request.user.shop_user.shop)
 
     def perform_create(self, serializer):
-        serializer.validated_data['shop'] = self.request.user.shop
+        serializer.validated_data['shop'] = self.request.user.shop_user.shop
         serializer.validated_data['created_by'] = self.request.user
         serializer.validated_data['modified_by'] = self.request.user
         serializer.save()
@@ -531,7 +531,7 @@ class SupplierDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Supplier.objects.filter(shop=self.request.user.shop)
+        return Supplier.objects.filter(shop=self.request.user.shop_user.shop)
 
     def perform_update(self, serializer):
         serializer.validated_data['modified_by'] = self.request.user
@@ -567,7 +567,7 @@ class StockMovementListView(generics.ListAPIView):
 
     def get_queryset(self):
         queryset = StockMovement.objects.filter(
-            product__shop=self.request.user.shop
+            product__shop=self.request.user.shop_user.shop
         ).select_related('product', 'supplier')
         
         # Date range filtering
@@ -588,7 +588,7 @@ class LowStockAlertsView(generics.ListAPIView):
 
     def get_queryset(self):
         return Product.objects.filter(
-            shop=self.request.user.shop,
+            shop=self.request.user.shop_user.shop,
             is_active=True,
             stock__quantity__lte=F('minimum_stock')
         ).select_related('stock', 'category', 'unit')
@@ -599,7 +599,7 @@ class PurchaseOrderDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return PurchaseOrder.objects.filter(shop=self.request.user.shop)
+        return PurchaseOrder.objects.filter(shop=self.request.user.shop_user.shop)
 
     @swagger_auto_schema(
         method='patch',
@@ -851,7 +851,7 @@ class UnitListView(generics.ListAPIView):
         return Unit.objects.all()
     
     def perform_create(self, serializer):
-        serializer.validated_data['shop'] = self.request.user.shop
+        serializer.validated_data['shop'] = self.request.user.shop_user.shop
         serializer.validated_data['created_by'] = self.request.user
         serializer.validated_data['modified_by'] = self.request.user
         serializer.save()
