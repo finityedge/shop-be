@@ -77,7 +77,7 @@ class DashboardViewSet(ViewSet):
         """Key metrics for the summary cards"""
         start_date, end_date = self.get_date_range(request)
         previous_start = start_date - datetime.timedelta(days=(end_date - start_date).days)
-        shop = request.user.shop
+        shop = request.user.shop_user.shop
         
         # Current period calculations
         sales = Sale.objects.filter(
@@ -140,7 +140,7 @@ class DashboardViewSet(ViewSet):
     def sales_trends(self, request):
         """Daily/Monthly sales trends for charts"""
         start_date, end_date = self.get_date_range(request)
-        shop = request.user.shop
+        shop = request.user.shop_user.shop
         interval = request.query_params.get('interval', 'daily')
         
         sales = Sale.objects.filter(
@@ -172,7 +172,7 @@ class DashboardViewSet(ViewSet):
     def top_products(self, request):
         """Top selling products analysis"""
         start_date, end_date = self.get_date_range(request)
-        shop = request.user.shop
+        shop = request.user.shop_user.shop
         limit = int(request.query_params.get('limit', 10))
         
         top_products = SaleItem.objects.filter(
@@ -192,7 +192,7 @@ class DashboardViewSet(ViewSet):
     @action(detail=False, methods=['get'])
     def inventory_status(self, request):
         """Inventory metrics and low stock alerts"""
-        shop = request.user.shop
+        shop = request.user.shop_user.shop
         
         # Low stock products
         low_stock = Product.objects.filter(
@@ -228,7 +228,7 @@ class DashboardViewSet(ViewSet):
     def expense_analysis(self, request):
         """Expense breakdown and trends"""
         start_date, end_date = self.get_date_range(request)
-        shop = request.user.shop
+        shop = request.user.shop_user.shop
         
         # Expense by category
         category_breakdown = Expense.objects.filter(
@@ -268,7 +268,7 @@ class DashboardViewSet(ViewSet):
     def customer_insights(self, request):
         """Customer purchase analysis"""
         start_date, end_date = self.get_date_range(request)
-        shop = request.user.shop
+        shop = request.user.shop_user.shop
         
         # Top customers
         top_customers = Sale.objects.filter(
@@ -294,7 +294,7 @@ class DashboardViewSet(ViewSet):
     def payment_analytics(self, request):
         """Payment and collection analysis"""
         start_date, end_date = self.get_date_range(request)
-        shop = request.user.shop
+        shop = request.user.shop_user.shop
         
         # Payment method breakdown
         payment_methods = Payment.objects.filter(
@@ -342,7 +342,7 @@ class ImageUploadViewSet(ViewSet):
         if serializer.is_valid():
             file = serializer.validated_data['file']
             try:
-                shop = request.user.shop
+                shop = request.user.shop_user.shop
                 image_url = upload_image(file, folder=f"shop_{shop.shop_name}")
                 if 'error' in image_url:
                     return Response({'error': image_url}, status=400)

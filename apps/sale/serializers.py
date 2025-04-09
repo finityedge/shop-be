@@ -42,18 +42,26 @@ class SaleItemCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 f"Insufficient stock. Available: {product.stock.quantity}"
             )
+        
+        # Optional: Validate that discount amount doesn't exceed subtotal
+        if 'discount_amount' in data and 'unit_price' in data:
+            subtotal = quantity * data['unit_price']
+            if data['discount_amount'] > subtotal:
+                raise serializers.ValidationError(
+                    "Discount amount cannot exceed the subtotal"
+                )
+        
         return data
 
 class SaleItemDetailSerializer(serializers.ModelSerializer):
     product = serializers.StringRelatedField()
     subtotal = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
-    discount_amount = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    discount_percentage = serializers.DecimalField(max_digits=5, decimal_places=2, read_only=True)
     total = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
 
     class Meta:
         model = SaleItem
         fields = '__all__'
-
 # Sale Serializers
 class SaleListSerializer(serializers.ModelSerializer):
     customer_name = serializers.SerializerMethodField()

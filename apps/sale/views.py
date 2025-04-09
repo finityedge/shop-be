@@ -30,7 +30,7 @@ class BaseAPIView:
 
     def perform_create(self, serializer):
         serializer.save(
-            shop=self.request.user.shop_user.shop,
+            shop=self.request.user.shop_user.shop_user.shop,
             created_by=self.request.user,
             modified_by=self.request.user
         )
@@ -42,7 +42,7 @@ class BaseAPIView:
         # Filter queryset by shop if the model has a shop field
         model = self.queryset.model
         if hasattr(model, 'shop'):
-            return self.queryset.filter(shop=self.request.user.shop_user.shop)
+            return self.queryset.filter(shop=self.request.user.shop_user.shop_user.shop)
         return self.queryset
 
 class CustomerListCreateView(BaseAPIView, generics.ListCreateAPIView):
@@ -120,7 +120,7 @@ class SaleListCreateView(BaseAPIView, generics.ListCreateAPIView):
     ordering = ['-created_at']
 
     def get_queryset(self):
-        return Sale.objects.filter(shop=self.request.user.shop_user.shop)
+        return Sale.objects.filter(shop=self.request.user.shop_user.shop_user.shop)
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -195,8 +195,8 @@ class SaleListCreateView(BaseAPIView, generics.ListCreateAPIView):
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
 
-            serializer.validated_data['shop'] = request.user.shop
-            serializer.validated_data['invoice_number'] = self.generate_invoice_number(request.user.shop)
+            serializer.validated_data['shop'] = request.user.shop_user.shop
+            serializer.validated_data['invoice_number'] = self.generate_invoice_number(request.user.shop_user.shop)
 
             sale = serializer.save(
                 created_by=request.user,
@@ -249,7 +249,7 @@ class SaleReturnsView(BaseAPIView, generics.ListAPIView):
 
     def get_queryset(self):
         sale = get_object_or_404(Sale, pk=self.kwargs['pk'])
-        return SalesReturn.objects.filter(sale=sale, shop=self.request.user.shop_user.shop)
+        return SalesReturn.objects.filter(sale=sale, shop=self.request.user.shop_user.shop_user.shop)
 
 class PaymentListCreateView(BaseAPIView, generics.ListCreateAPIView):
     """API endpoint for listing and creating payments."""
@@ -259,7 +259,7 @@ class PaymentListCreateView(BaseAPIView, generics.ListCreateAPIView):
     ordering = ['-payment_date']
 
     def get_queryset(self):
-        return Payment.objects.filter(shop=self.request.user.shop_user.shop)
+        return Payment.objects.filter(shop=self.request.user.shop_user.shop_user.shop)
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -277,7 +277,7 @@ class PaymentListCreateView(BaseAPIView, generics.ListCreateAPIView):
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
 
-            serializer.validated_data['shop'] = request.user.shop
+            serializer.validated_data['shop'] = request.user.shop_user.shop
 
             payment = serializer.save(
                 created_by=request.user,
@@ -315,7 +315,7 @@ class PaymentDetailView(BaseAPIView, generics.RetrieveAPIView):
     serializer_class = PaymentDetailSerializer
 
     def get_queryset(self):
-        return Payment.objects.filter(shop=self.request.user.shop_user.shop)
+        return Payment.objects.filter(shop=self.request.user.shop_user.shop_user.shop)
 
 class SalesReturnListCreateView(BaseAPIView, generics.ListCreateAPIView):
     """API endpoint for listing and creating sales returns."""
@@ -325,7 +325,7 @@ class SalesReturnListCreateView(BaseAPIView, generics.ListCreateAPIView):
     ordering = ['-created_at']
 
     def get_queryset(self):
-        return SalesReturn.objects.filter(shop=self.request.user.shop_user.shop)
+        return SalesReturn.objects.filter(shop=self.request.user.shop_user.shop_user.shop)
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -343,7 +343,7 @@ class SalesReturnListCreateView(BaseAPIView, generics.ListCreateAPIView):
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
 
-            serializer.validated_data['shop'] = request.user.shop
+            serializer.validated_data['shop'] = request.user.shop_user.shop
             
             sales_return = serializer.save(
                 created_by=request.user,
@@ -376,7 +376,7 @@ class SalesReturnDetailView(BaseAPIView, generics.RetrieveAPIView):
     serializer_class = SalesReturnDetailSerializer
 
     def get_queryset(self):
-        return SalesReturn.objects.filter(shop=self.request.user.shop_user.shop)
+        return SalesReturn.objects.filter(shop=self.request.user.shop_user.shop_user.shop)
 
 class SalesReturnApproveView(BaseAPIView, views.APIView):
     """API endpoint for approving sales returns."""

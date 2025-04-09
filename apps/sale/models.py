@@ -66,15 +66,16 @@ class SaleItem(TimeStampedModel):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.DecimalField(max_digits=10, decimal_places=2)
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
-    discount_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     
     @property
     def subtotal(self):
         return self.quantity * self.unit_price
     
     @property
-    def discount_amount(self):
-        return self.subtotal * (self.discount_percentage / 100)
+    def discount_percentage(self):
+        # Calculate percentage for display purposes if needed
+        return (self.discount_amount / self.subtotal * 100) if self.subtotal else 0
     
     @property
     def total(self):
