@@ -338,7 +338,7 @@ class ImageUploadViewSet(ViewSet):
         )
     @action(detail=False, methods=['post'])
     def upload_image(self, request):
-        serializer = ImageUploadSerializer(data=request.data)
+        serializer = ImageUploadSerializer(data=self.request.data)
         if serializer.is_valid():
             file = serializer.validated_data['file']
             try:

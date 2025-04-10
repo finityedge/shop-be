@@ -66,7 +66,7 @@ class UserRegistrationView(generics.CreateAPIView):
         - Generate verification token
         - Optionally send verification message
         """
-        serializer = self.get_serializer(data=request.data)
+        serializer = self.get_serializer(data=self.request.data)
 
         try:
             serializer.is_valid(raise_exception=True)
@@ -263,7 +263,7 @@ class UserLoginView(views.APIView):
         - Validate login credentials
         - Generate access and refresh tokens
         """
-        serializer = UserLoginSerializer(data=request.data)
+        serializer = UserLoginSerializer(data=self.request.data)
         
         try:
             serializer.is_valid(raise_exception=True)
@@ -324,7 +324,7 @@ class PasswordResetRequestView(views.APIView):
         - Generate OTP
         - Send OTP via WhatsApp
         """
-        serializer = PasswordResetRequestSerializer(data=request.data)
+        serializer = PasswordResetRequestSerializer(data=self.request.data)
         
         try:
             serializer.is_valid(raise_exception=True)
@@ -391,7 +391,7 @@ class PasswordResetConfirmView(views.APIView):
         - Reset password
         - Optional: Invalidate existing tokens
         """
-        serializer = PasswordResetConfirmSerializer(data=request.data)
+        serializer = PasswordResetConfirmSerializer(data=self.request.data)
         
         try:
             serializer.is_valid(raise_exception=True)

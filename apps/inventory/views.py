@@ -29,7 +29,7 @@ class CategoryListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Category.objects.filter(shop=self.request.user.shop_user.shop_user.shop)
+        return Category.objects.filter(shop=self.request.user.shop_user.shop)
 
     @swagger_auto_schema(
         operation_description='List all categories or create a new one',
@@ -42,7 +42,7 @@ class CategoryListCreateView(generics.ListCreateAPIView):
     )
     def create(self, request, *args, **kwargs):
         try:
-            serializer = self.get_serializer(data=request.data)
+            serializer = self.get_serializer(data=self.request.data)
             serializer.is_valid(raise_exception=True)
             
             # Set created_by and modified_by and shop
@@ -87,7 +87,7 @@ class ProductListCreateView(generics.ListCreateAPIView):
         Supports filtering by barcode, SKU, category, stock levels, and more.
         """
         # Shop filtering is mandatory for multitenancy
-        queryset = Product.objects.filter(shop=self.request.user.shop_user.shop_user.shop)
+        queryset = Product.objects.filter(shop=self.request.user.shop_user.shop)
         
         # Add select_related and prefetch_related for performance
         queryset = queryset.select_related('category', 'unit', 'stock').prefetch_related('stock_movements')
@@ -192,7 +192,7 @@ class ProductListCreateView(generics.ListCreateAPIView):
     @transaction.atomic
     def create(self, request, *args, **kwargs):
         try:
-            serializer = self.get_serializer(data=request.data)
+            serializer = self.get_serializer(data=self.request.data)
             serializer.is_valid(raise_exception=True)
             
             # Set shop and user fields
@@ -209,8 +209,8 @@ class ProductListCreateView(generics.ListCreateAPIView):
                 Stock.objects.create(
                     product=product,
                     quantity=initial_stock,
-                    created_by=request.user,
-                    modified_by=request.user
+                    created_by=self.request.user,
+                    modified_by=self.request.user
                 )
                 
                 # Create stock movement record
@@ -220,8 +220,8 @@ class ProductListCreateView(generics.ListCreateAPIView):
                     quantity=initial_stock,
                     unit_price=product.cost_price,
                     reference_number='INITIAL',
-                    created_by=request.user,
-                    modified_by=request.user
+                    created_by=self.request.user,
+                    modified_by=self.request.user
                 )
             
             detail_serializer = ProductDetailSerializer(product)
@@ -270,7 +270,7 @@ class StockAdjustmentView(views.APIView):
                 raise ValidationError('Missing required fields')
             
             # Get product and verify ownership
-            product = get_object_or_404(Product, id=product_id, shop=request.user.shop_user.shop)
+            product = get_object_or_404(Product, id=product_id, shop=self.request.user.shop_user.shop)
             
             # Get or create stock record
             stock, created = Stock.objects.get_or_create(
@@ -294,8 +294,8 @@ class StockAdjustmentView(views.APIView):
                 unit_price=product.cost_price,
                 reference_number=f'ADJ-{timezone.now().strftime("%Y%m%d%H%M%S")}',
                 notes=reason,
-                created_by=request.user,
-                modified_by=request.user
+                created_by=self.request.user,
+                modified_by=self.request.user
             )
             
             return Response({
@@ -327,7 +327,7 @@ class PurchaseOrderListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         """Filter purchase orders by shop."""
-        return PurchaseOrder.objects.filter(shop=self.request.user.shop_user.shop_user.shop)
+        return PurchaseOrder.objects.filter(shop=self.request.user.shop_user.shop)
 
     @swagger_auto_schema(
         operation_description='Create a new purchase order with items',
@@ -339,19 +339,19 @@ class PurchaseOrderListCreateView(generics.ListCreateAPIView):
         try:
             # Validate supplier
             supplier_id = request.data.get('supplier_id')
-            supplier = get_object_or_404(Supplier, id=supplier_id, shop=request.user.shop_user.shop)
+            supplier = get_object_or_404(Supplier, id=supplier_id, shop=self.request.user.shop_user.shop)
             
             # Generate PO number
             po_number = f'PO-{timezone.now().strftime("%Y%m%d%H%M%S")}'
             
             # Create purchase order
             purchase_order = PurchaseOrder.objects.create(
-                shop=request.user.shop_user.shop,
+                shop=self.request.user.shop_user.shop,
                 supplier=supplier,
                 po_number=po_number,
-                expected_delivery_date=request.data.get('expected_delivery_date'),
-                created_by=request.user,
-                modified_by=request.user
+                expected_delivery_date=self.request.data.get('expected_delivery_date'),
+                created_by=self.request.user,
+                modified_by=self.request.user
             )
             
             # Create items and calculate totals
@@ -364,7 +364,7 @@ class PurchaseOrderListCreateView(generics.ListCreateAPIView):
                 product = get_object_or_404(
                     Product, 
                     id=item_data['product'],
-                    shop=request.user.shop_user.shop
+                    shop=self.request.user.shop_user.shop
                 )
                 
                 # Explicitly convert to Decimal
@@ -376,8 +376,8 @@ class PurchaseOrderListCreateView(generics.ListCreateAPIView):
                     product=product,
                     quantity=quantity,
                     unit_price=unit_price,
-                    created_by=request.user,
-                    modified_by=request.user
+                    created_by=self.request.user,
+                    modified_by=self.request.user
                 )
                 
                 subtotal += quantity * unit_price
@@ -445,7 +445,7 @@ class ProductDetailView(generics.RetrieveUpdateDestroyAPIView):
         return ProductDetailSerializer
 
     def get_queryset(self):
-        return Product.objects.filter(shop=self.request.user.shop_user.shop_user.shop)
+        return Product.objects.filter(shop=self.request.user.shop_user.shop)
 
     @swagger_auto_schema(
         operation_description='Update a product',
@@ -465,7 +465,7 @@ class ProductDetailView(generics.RetrieveUpdateDestroyAPIView):
         # Use UpdateSerializer for validation
         update_serializer = ProductUpdateSerializer(
             instance,
-            data=request.data,
+            data=self.request.data,
             partial=partial
         )
         update_serializer.is_valid(raise_exception=True)
@@ -517,10 +517,10 @@ class SupplierListCreateView(generics.ListCreateAPIView):
     search_fields = ['name', 'contact_person', 'email']
 
     def get_queryset(self):
-        return Supplier.objects.filter(shop=self.request.user.shop_user.shop_user.shop)
+        return Supplier.objects.filter(shop=self.request.user.shop_user.shop)
 
     def perform_create(self, serializer):
-        serializer.validated_data['shop'] = self.request.user.shop_user.shop_user.shop
+        serializer.validated_data['shop'] = request.user.shop_user.shop
         serializer.validated_data['created_by'] = self.request.user
         serializer.validated_data['modified_by'] = self.request.user
         serializer.save()
@@ -531,7 +531,7 @@ class SupplierDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Supplier.objects.filter(shop=self.request.user.shop_user.shop_user.shop)
+        return Supplier.objects.filter(shop=self.request.user.shop_user.shop)
 
     def perform_update(self, serializer):
         serializer.validated_data['modified_by'] = self.request.user
@@ -567,7 +567,7 @@ class StockMovementListView(generics.ListAPIView):
 
     def get_queryset(self):
         queryset = StockMovement.objects.filter(
-            product__shop=self.request.user.shop_user.shop_user.shop
+            product__shop=self.request.user.shop_user.shop
         ).select_related('product', 'supplier')
         
         # Date range filtering
@@ -588,7 +588,7 @@ class LowStockAlertsView(generics.ListAPIView):
 
     def get_queryset(self):
         return Product.objects.filter(
-            shop=self.request.user.shop_user.shop_user.shop,
+            shop=self.request.user.shop_user.shop,
             is_active=True,
             stock__quantity__lte=F('minimum_stock')
         ).select_related('stock', 'category', 'unit')
@@ -599,7 +599,7 @@ class PurchaseOrderDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return PurchaseOrder.objects.filter(shop=self.request.user.shop_user.shop_user.shop)
+        return PurchaseOrder.objects.filter(shop=self.request.user.shop_user.shop)
 
     @swagger_auto_schema(
         method='patch',
@@ -667,7 +667,7 @@ class PurchaseOrderStatusUpdateView(views.APIView):
     )
     def patch(self, request, pk):
         try:
-            purchase_order = get_object_or_404(PurchaseOrder, id=pk, shop=request.user.shop_user.shop)
+            purchase_order = get_object_or_404(PurchaseOrder, id=pk, shop=self.request.user.shop_user.shop)
             new_status = request.data.get('status')
             
             if not new_status:
@@ -742,7 +742,7 @@ class ReceivePurchaseOrderView(views.APIView):
             purchase_order = get_object_or_404(
                 PurchaseOrder,
                 id=po_id,
-                shop=request.user.shop_user.shop
+                shop=self.request.user.shop_user.shop
             )
             
             if purchase_order.status == 'RECEIVED':
@@ -790,8 +790,8 @@ class ReceivePurchaseOrderView(views.APIView):
                     unit_price=po_item.unit_price,
                     reference_number=purchase_order.po_number,
                     supplier=purchase_order.supplier,
-                    created_by=request.user,
-                    modified_by=request.user
+                    created_by=self.request.user,
+                    modified_by=self.request.user
                 )
                 
                 # Update PO item
@@ -851,7 +851,7 @@ class UnitListView(generics.ListAPIView):
         return Unit.objects.all()
     
     def perform_create(self, serializer):
-        serializer.validated_data['shop'] = self.request.user.shop_user.shop_user.shop
+        serializer.validated_data['shop'] = request.user.shop_user.shop
         serializer.validated_data['created_by'] = self.request.user
         serializer.validated_data['modified_by'] = self.request.user
         serializer.save()
