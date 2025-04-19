@@ -239,7 +239,7 @@ class SalesReturnCreateSerializer(serializers.ModelSerializer):
         try:
             items_data = validated_data.pop('items')
 
-            validated_data['shop'] = self.context['request'].user.shop
+            validated_data['shop'] = self.context['request'].user.shop_user.shop
 
             sales_return = SalesReturn.objects.create(**validated_data)
             

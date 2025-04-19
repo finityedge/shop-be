@@ -48,7 +48,7 @@ class ProductListSerializer(serializers.ModelSerializer):
         ]
 
     def create(self, validated_data):
-        validated_data['shop'] = self.context['request'].user.shop
+        validated_data['shop'] = self.context['request'].user.shop_user.shop
         return super().create(validated_data)
     
 class ProductCreateSerializer(serializers.ModelSerializer):

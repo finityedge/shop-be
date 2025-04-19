@@ -376,3 +376,16 @@ user_registration_schema = {
         description='Shop address'
     )
 }
+
+class ShopUserSerializer(serializers.ModelSerializer):
+    """
+    Serializer for displaying users associated with a shop.
+    """
+    name = serializers.CharField(source='user.name', read_only=True)
+    phone = serializers.CharField(source='user.phone', read_only=True)
+    username = serializers.CharField(source='user.username', read_only=True)
+    role = serializers.CharField(source='user.get_role_display', read_only=True)
+    
+    class Meta:
+        model = ShopUser
+        fields = ['id', 'username', 'name', 'phone', 'role']

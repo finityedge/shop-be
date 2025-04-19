@@ -14,7 +14,7 @@ class ExpenseCategorySerializer(serializers.ModelSerializer):
         read_only_fields = ['shop', 'created_at', 'modified_at', 'created_by', 'modified_by']
 
     def create(self, validated_data):
-        validated_data['shop'] = self.context['request'].user.shop
+        validated_data['shop'] = self.context['request'].user.shop_user.shop
         return super().create(validated_data)
 
 class PaymentMethodSerializer(serializers.ModelSerializer):
@@ -27,7 +27,7 @@ class PaymentMethodSerializer(serializers.ModelSerializer):
         read_only_fields = ['shop', 'created_at', 'modified_at', 'created_by', 'modified_by']
 
     def create(self, validated_data):
-        validated_data['shop'] = self.context['request'].user.shop
+        validated_data['shop'] = self.context['request'].user.shop_user.shop
         return super().create(validated_data)
 
 class ExpensePaymentSerializer(serializers.ModelSerializer):
@@ -68,7 +68,7 @@ class ExpenseCreateSerializer(serializers.ModelSerializer):
         ]
 
     def create(self, validated_data):
-        validated_data['shop'] = self.context['request'].user.shop
+        validated_data['shop'] = self.context['request'].user.shop_user.shop
         expense = Expense.objects.create(**validated_data)
         return expense
 

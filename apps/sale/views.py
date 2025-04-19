@@ -491,4 +491,59 @@ class SalesReturnApproveView(BaseAPIView, views.APIView):
                 {"detail": str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+class SaleDeleteView(BaseAPIView, generics.DestroyAPIView):
+    """API endpoint for deleting sales."""
+    queryset = Sale.objects.all()
+    
+    @swagger_auto_schema(
+        operation_description='Delete a sale and all related records',
+        responses={
+            204: openapi.Response(description="Sale deleted successfully"),
+            400: openapi.Response(description="Bad request"),
+            403: openapi.Response(description="Not authorized to delete this sale"),
+        }
+    )
+    @transaction.atomic
+    def destroy(self, request, *args, **kwargs):
+        try:
+            sale = self.get_object()
+            
+            # Check if user has permission to delete this sale
+            if sale.shop != request.user.shop_user.shop:
+                return Response(
+                    {"detail": "You do not have permission to delete this sale."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            # Get related records before deletion to update inventory
+            sale_items = list(sale.items.all())
+            
+            # Delete related objects in the correct order
+            # 1. Delete sales returns and return items first
+            for sales_return in sale.returns.all():
+                sales_return.items.all().delete()
+                sales_return.delete()
+            
+            # 2. Delete payments
+            sale.payments.all().delete()
+            
+            # 3. Delete sale items
+            sale.items.all().delete()
+            
+            # 4. Delete the sale itself
+            sale.delete()
+            
+            # 5. Update inventory - restore quantities back to stock
+            for item in sale_items:
+                stock = item.product.stock
+                stock.quantity += item.quantity
+                stock.save()
+            
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Exception as e:
+            return Response(
+                {"detail": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         

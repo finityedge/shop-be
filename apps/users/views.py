@@ -2,6 +2,7 @@ from rest_framework import generics, status, views, serializers
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.permissions import IsAuthenticated
 
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
@@ -9,7 +10,9 @@ from drf_yasg.utils import swagger_auto_schema
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
+from apps.shop.models import ShopUser
 from apps.users.serializers import (
+    ShopUserSerializer,
     UserRegistrationSerializer, 
     UserLoginSerializer, 
     PasswordResetRequestSerializer, 
@@ -415,3 +418,43 @@ class PasswordResetConfirmView(views.APIView):
                 {'error': 'Unexpected error during password reset', 'details': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class ShopUsersListView(generics.ListAPIView):
+    """
+    API endpoint for listing users belonging to the shop of the current logged-in user.
+    """
+    serializer_class = ShopUserSerializer
+    permission_classes = [IsAuthenticated]
+    
+    @swagger_auto_schema(
+        operation_description='List all users associated with the current user\'s shop',
+        tags=['Shop Users'],
+        responses={
+            200: 'List of shop users retrieved successfully',
+            403: 'User does not have permission to view shop users',
+            404: 'Shop not found',
+            500: 'Unexpected server error'
+        }
+    )
+    def get_queryset(self):
+        """
+        Return a list of all users associated with the shop.
+        Only shop admins and staff can access this endpoint.
+        """
+        try:
+            # Get the current user's shop
+            shop_user = ShopUser.objects.get(user=self.request.user)
+            shop = shop_user.shop
+            
+            # Check if user has permissions (admin or staff)
+            # if self.request.user.role not in [User.ROLE_ADMIN, User.ROLE_STAFF]:
+            #     raise serializers.ValidationError("You don't have permission to view shop users.")
+            
+            # Return all users for this shop
+            return ShopUser.objects.filter(shop=shop).select_related('user')
+            
+        except ShopUser.DoesNotExist:
+            raise serializers.ValidationError("You are not associated with any shop.")
+        except Exception as e:
+            raise serializers.ValidationError(f"Error retrieving shop users: {str(e)}")

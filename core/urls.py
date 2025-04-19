@@ -31,9 +31,10 @@ from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from apps.common.views import DashboardViewSet, ImageUploadViewSet
 from apps.expense.views import ExpenseCategoryDetailView, ExpenseCategoryListCreateView, ExpenseDetailView, ExpenseListCreateView, ExpensePaymentCreateView, ExpenseStatusUpdateView, PaymentMethodDetailView, PaymentMethodListCreateView, RecurringExpenseLogListView
-from apps.sale.views import CustomerDetailView, CustomerListCreateView, CustomerSalesHistoryView, PaymentDetailView, PaymentListCreateView, SaleDetailView, SaleListCreateView, SalePaymentsView, SaleReturnsView, SalesReturnApproveView, SalesReturnDetailView, SalesReturnListCreateView
+from apps.sale.views import CustomerDetailView, CustomerListCreateView, CustomerSalesHistoryView, PaymentDetailView, PaymentListCreateView, SaleDeleteView, SaleDetailView, SaleListCreateView, SalePaymentsView, SaleReturnsView, SalesReturnApproveView, SalesReturnDetailView, SalesReturnListCreateView
 from core.views import index
 from apps.users.views import (
+    ShopUsersListView,
     UserRegistrationView,
     UserLoginView,
     VerifyUserView,
@@ -71,6 +72,7 @@ urlpatterns = [
     path('api/password-reset', PasswordResetRequestView.as_view(), name='password-reset'),
     path('api/password-reset-confirm', PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
     path('api/send-dummy-message', SendDummyMessageView.as_view(), name='send-dummy-message'),
+    path('api/shop/users', ShopUsersListView.as_view(), name='shop-users'),
 
     # Inventory URLs
     path('api/categories', CategoryListCreateView.as_view(), name='category-list-create'),
@@ -110,6 +112,7 @@ urlpatterns = [
     path('api/sales/<int:pk>', SaleDetailView.as_view(), name='sale-detail'),
     path('api/sales/<int:pk>/payments', SalePaymentsView.as_view(), name='sale-payments'),
     path('api/sales/<int:pk>/returns', SaleReturnsView.as_view(), name='sale-returns'),
+    path('api/sales/<int:pk>/delete', SaleDeleteView.as_view(), name='sale-delete'),
 
     # Sales URLs - Payments
     path('api/payments', PaymentListCreateView.as_view(), name='payment-list-create'),
