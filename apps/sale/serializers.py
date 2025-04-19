@@ -65,24 +65,49 @@ class SaleItemDetailSerializer(serializers.ModelSerializer):
 # Sale Serializers
 class SaleListSerializer(serializers.ModelSerializer):
     customer_name = serializers.SerializerMethodField()
+    created_by_name = serializers.SerializerMethodField()
     
     class Meta:
         model = Sale
         fields = ['id', 'invoice_number', 'sale_date', 'customer_name', 
-                 'total', 'payment_status']
+                 'total', 'payment_status', 'created_by', 'created_by_name',
+                 'paid_amount', 'balance_due']
     
     def get_customer_name(self, obj):
         return obj.customer.name if obj.customer else None
+        
+    def get_created_by_name(self, obj):
+        return f"{obj.created_by.first_name} {obj.created_by.last_name}" if obj.created_by else None
 
 class SaleDetailSerializer(serializers.ModelSerializer):
     customer = CustomerDetailSerializer(required=False, allow_null=True)
     items = SaleItemDetailSerializer(many=True, read_only=True)
     balance_due = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    created_by_name = serializers.SerializerMethodField()
+    modified_by_name = serializers.SerializerMethodField()
+    payment_status_display = serializers.SerializerMethodField()
+    payment_method_display = serializers.SerializerMethodField()
 
     class Meta:
         model = Sale
         fields = '__all__'
         read_only_fields = ['created_at', 'modified_at', 'created_by', 'modified_by']
+        
+    def get_created_by_name(self, obj):
+        if not obj.created_by:
+            return None
+        return f"{obj.created_by.first_name} {obj.created_by.last_name}".strip() or obj.created_by.username
+    
+    def get_modified_by_name(self, obj):
+        if not obj.modified_by:
+            return None
+        return f"{obj.modified_by.first_name} {obj.modified_by.last_name}".strip() or obj.modified_by.username
+    
+    def get_payment_status_display(self, obj):
+        return obj.get_payment_status_display()
+    
+    def get_payment_method_display(self, obj):
+        return obj.get_payment_method_display()
 
 class SaleCreateSerializer(serializers.ModelSerializer):
     items = SaleItemCreateSerializer(many=True)

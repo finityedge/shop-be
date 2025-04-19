@@ -1,8 +1,11 @@
+from collections import OrderedDict
+from decimal import Decimal
 from rest_framework import generics, status, filters, views
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.decorators import api_view
+from rest_framework.pagination import PageNumberPagination
+from django_filters.rest_framework import DjangoFilterBackend
 # from django_filters.rest_framework import DjangoFilterBackend
 from django.db import transaction
 from django.shortcuts import get_object_or_404
@@ -44,6 +47,57 @@ class BaseAPIView:
         if hasattr(model, 'shop'):
             return self.queryset.filter(shop=self.request.user.shop_user.shop)
         return self.queryset
+    
+class CustomPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+    
+    def get_paginated_response(self, data):
+        # Convert string values to Decimal before summing
+        try:
+            total_amount = sum(Decimal(str(item['total'])) for item in data)
+            total_paid = sum(Decimal(str(item.get('paid_amount', 0))) for item in data)
+            total_balance = sum(Decimal(str(item.get('balance_due', 0))) for item in data)
+        except (KeyError, ValueError, TypeError):
+            # Fallback if there's any conversion error
+            total_amount = Decimal('0.00')
+            total_paid = Decimal('0.00')
+            total_balance = Decimal('0.00')
+            
+        return Response(OrderedDict([
+            ('count', self.page.paginator.count),
+            ('next', self.get_next_link()),
+            ('previous', self.get_previous_link()),
+            ('current_page', self.page.number),
+            ('total_pages', self.page.paginator.num_pages),
+            ('page_size', self.get_page_size(self.request)),
+            ('results', data),
+            ('metadata', {
+                'total_sales': self.page.paginator.count,
+                'total_amount': str(total_amount),  # Convert back to string for JSON serialization
+                'total_paid': str(total_paid),
+                'total_balance': str(total_balance),
+                'payment_status_summary': self._get_payment_status_summary(data)
+            })
+        ]))
+    
+    def _get_payment_status_summary(self, data):
+        """Calculate summary statistics by payment status"""
+        summary = {}
+        for status in ['PENDING', 'PARTIAL', 'PAID', 'OVERDUE']:
+            status_items = [item for item in data if item.get('payment_status') == status]
+            if status_items:
+                try:
+                    total = sum(Decimal(str(item['total'])) for item in status_items)
+                except (KeyError, ValueError, TypeError):
+                    total = Decimal('0.00')
+                    
+                summary[status.lower()] = {
+                    'count': len(status_items),
+                    'total': str(total)
+                }
+        return summary
 
 class CustomerListCreateView(BaseAPIView, generics.ListCreateAPIView):
     """API endpoint for listing and creating customers."""
@@ -112,15 +166,49 @@ class CustomerSalesHistoryView(BaseAPIView, generics.ListAPIView):
         customer = get_object_or_404(Customer, pk=self.kwargs['pk'])
         return Sale.objects.filter(customer=customer)
 
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
 class SaleListCreateView(BaseAPIView, generics.ListCreateAPIView):
     """API endpoint for listing and creating sales."""
-    filterset_fields = ['payment_status', 'payment_method', 'sale_date']
-    search_fields = ['invoice_number', 'customer__name']
-    ordering_fields = ['sale_date', 'total', 'created_at']
+    pagination_class = CustomPagination
+    # Add DjangoFilterBackend to the filter_backends
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    # Add created_by and other relevant filters
+    filterset_fields = ['payment_status', 'payment_method', 'sale_date', 'created_by', 'customer']
+    search_fields = ['invoice_number', 'customer__name', 'created_by__username', 'notes']
+    ordering_fields = ['sale_date', 'total', 'created_at', 'paid_amount', 'due_date']
     ordering = ['-created_at']
 
     def get_queryset(self):
-        return Sale.objects.filter(shop=self.request.user.shop_user.shop)
+        queryset = Sale.objects.filter(shop=self.request.user.shop_user.shop)
+        
+        # Additional date range filtering
+        start_date = self.request.query_params.get('start_date', None)
+        end_date = self.request.query_params.get('end_date', None)
+        
+        if start_date:
+            queryset = queryset.filter(sale_date__gte=start_date)
+        if end_date:
+            queryset = queryset.filter(sale_date__lte=end_date)
+            
+        # Payment status filtering
+        status = self.request.query_params.get('payment_status', None)
+        if status:
+            queryset = queryset.filter(payment_status=status)
+            
+        # Amount range filtering
+        min_amount = self.request.query_params.get('min_amount', None)
+        max_amount = self.request.query_params.get('max_amount', None)
+        
+        if min_amount:
+            queryset = queryset.filter(total__gte=min_amount)
+        if max_amount:
+            queryset = queryset.filter(total__lte=max_amount)
+            
+        return queryset
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
