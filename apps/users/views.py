@@ -18,7 +18,6 @@ from apps.users.serializers import (
     PasswordResetRequestSerializer, 
     PasswordResetConfirmSerializer
 )
-from core.whatsapp_helper import WhatsAppHelper
 from core import settings
 
 User = get_user_model()
@@ -81,18 +80,18 @@ class UserRegistrationView(generics.CreateAPIView):
             user.save()
 
             # Send verification message (optional)
-            whatsapp_helper = WhatsAppHelper(
-                settings.TWILIO_ACCOUNT_SID, 
-                settings.TWILIO_AUTH_TOKEN, 
-                settings.TWILIO_PHONE_NUMBER
-            )
+            # whatsapp_helper = WhatsAppHelper(
+            #     settings.TWILIO_ACCOUNT_SID, 
+            #     settings.TWILIO_AUTH_TOKEN, 
+            #     settings.TWILIO_PHONE_NUMBER
+            # )
 
-            frontend_url = settings.FRONTEND_URL
+            # frontend_url = settings.FRONTEND_URL
 
-            verification_url = f'{frontend_url}/#/verify?token={user.verification_token}'
-            message = f"Welcome! Verify your account: {verification_url}"
+            # verification_url = f'{frontend_url}/#/verify?token={user.verification_token}'
+            # message = f"Welcome! Verify your account: {verification_url}"
             
-            whatsapp_helper.send_whatsapp_message(f"whatsapp:{user.phone}", message)
+            # whatsapp_helper.send_whatsapp_message(f"whatsapp:{user.phone}", message)
 
             return Response({
                 'message': 'User and Shop registered successfully',
@@ -130,22 +129,22 @@ class SendDummyMessageView(views.APIView):
         - Create a WhatsAppHelper instance
         - Send a test message
         """
-        whatsapp_helper = WhatsAppHelper(
-            settings.TWILIO_ACCOUNT_SID, 
-            settings.TWILIO_AUTH_TOKEN, 
-            '+23058000613'
-        )
+        # whatsapp_helper = WhatsAppHelper(
+        #     settings.TWILIO_ACCOUNT_SID, 
+        #     settings.TWILIO_AUTH_TOKEN, 
+        #     '+23058000613'
+        # )
 
-        verification_url = f'http://localhost:3000/api/verify/6565'
-        str_message = f"Welcome! Verify your account: {verification_url}"
+        # verification_url = f'http://localhost:3000/api/verify/6565'
+        # str_message = f"Welcome! Verify your account: {verification_url}"
         
-        message = whatsapp_helper.send_whatsapp_message(
-            'whatsapp:+23054879046', 
-            str_message
-        )
+        # message = whatsapp_helper.send_whatsapp_message(
+        #     'whatsapp:+23054879046', 
+        #     str_message
+        # )
 
-        print(message.sid)
-        print(message.status)
+        # print(message.sid)
+        # print(message.status)
         
         return Response({'message': 'Message sent successfully'}, status=status.HTTP_200_OK)
 
@@ -334,14 +333,14 @@ class PasswordResetRequestView(views.APIView):
             user = serializer.save()
             
             # Optional: Send WhatsApp message
-            whatsapp_helper = WhatsAppHelper(
-                settings.TWILIO_ACCOUNT_SID, 
-                settings.TWILIO_AUTH_TOKEN, 
-                settings.TWILIO_PHONE_NUMBER
-            )
-            message = f"Your password reset OTP is: {user.otp}. This OTP will expire in 5 minutes."
-            # Uncomment to send WhatsApp message
-            whatsapp_helper.send_whatsapp_message(f"whatsapp:{user.phone}", message)
+            # whatsapp_helper = WhatsAppHelper(
+            #     settings.TWILIO_ACCOUNT_SID, 
+            #     settings.TWILIO_AUTH_TOKEN, 
+            #     settings.TWILIO_PHONE_NUMBER
+            # )
+            # message = f"Your password reset OTP is: {user.otp}. This OTP will expire in 5 minutes."
+            # # Uncomment to send WhatsApp message
+            # whatsapp_helper.send_whatsapp_message(f"whatsapp:{user.phone}", message)
             
             return Response(
                 serializer.to_representation(user),
