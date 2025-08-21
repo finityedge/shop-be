@@ -9,8 +9,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 
-from twilio.rest import Client
 import random
+import re
 
 User = get_user_model()
 
@@ -74,16 +74,18 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     
     def validate_phone(self, value):
         """
-        Validate phone number using Twilio lookup.
+        Validate phone number format (basic validation without Twilio).
         """
-        client = Client(
-            settings.TWILIO_ACCOUNT_SID, 
-            settings.TWILIO_AUTH_TOKEN
-        )
-        try:
-            client.lookups.phone_numbers(value).fetch()
-        except Exception as e:
-            raise serializers.ValidationError(f"Invalid phone number: {e}")
+        # Basic phone number validation - digits and common formats
+        phone_pattern = r'^\+?[1-9]\d{1,14}$'
+        
+        if not re.match(phone_pattern, value.replace(' ', '').replace('-', '')):
+            raise serializers.ValidationError("Invalid phone number format. Please use international format.")
+        
+        # Check if phone number already exists
+        if User.objects.filter(phone=value).exists():
+            raise serializers.ValidationError("A user with this phone number already exists.")
+            
         return value
 
     @transaction.atomic
