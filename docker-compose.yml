@@ -56,7 +56,7 @@ volumes:
 
 
 networks:
-  shop-be_internal:
+  internal:
     driver: bridge
   proxy:
     external: true
