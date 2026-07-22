@@ -54,13 +54,10 @@ services:
 volumes:
   pgdata:
 
-networks:
-  # Private network for app <-> db traffic only.
-  internal:
 
-  # PLACEHOLDER: replace with the real shared network name from `docker network ls`
-  # (the one the existing Caddy container is attached to). Do not remove
-  # `external: true` — this compose file must join that network, never create it.
+networks:
+  shop-be_internal:
+    driver: bridge
   proxy:
-    name: REPLACE_ME_shared_caddy_network
     external: true
+    name: fuelflow_default
