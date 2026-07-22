@@ -22,19 +22,27 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-#x$o@2xtfenela6m1v)0=zaky%9ybp5uq%++hwvpx0lc42(y'
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = [
-    '*',
-    'shop-be.azurewebsites.net'
-]
-
 # Load the .env file
 load_dotenv()
+
+
+def env_list(name, default=''):
+    """Read a comma-separated env var into a list of stripped, non-empty values."""
+    return [item.strip() for item in os.getenv(name, default).split(',') if item.strip()]
+
+
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = os.getenv(
+    'SECRET_KEY',
+    'django-insecure-#x$o@2xtfenela6m1v)0=zaky%9ybp5uq%++hwvpx0lc42(y',
+)
+
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = os.getenv('DEBUG', 'False').lower() in ('1', 'true', 'yes')
+
+ALLOWED_HOSTS = env_list('ALLOWED_HOSTS', 'localhost,127.0.0.1')
+
+CSRF_TRUSTED_ORIGINS = env_list('CSRF_TRUSTED_ORIGINS')
 
 TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID')
 TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN')
@@ -78,6 +86,9 @@ AUTH_USER_MODEL = 'users.User'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    # WhiteNoise must sit directly below SecurityMiddleware so it can serve
+    # /static/ before any other middleware touches the request.
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -85,7 +96,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True
@@ -153,20 +163,28 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-DATABASES = {
-    # 'default': {
-    #     'ENGINE': 'django.db.backends.sqlite3',
-    #     'NAME': BASE_DIR / 'db.sqlite3',
-    # }
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME'),
-        'USER': os.getenv('DB_USER'),
-        'PASSWORD': os.getenv('DB_PASSWORD'),
-        'HOST': os.getenv('DB_HOST'),
-        'PORT': os.getenv('DB_PORT')
+# DATABASE_URL wins when set (Docker / production); the discrete DB_* vars stay
+# supported so existing local setups keep working unchanged.
+if os.getenv('DATABASE_URL'):
+    import dj_database_url
+
+    DATABASES = {
+        'default': dj_database_url.config(
+            conn_max_age=int(os.getenv('DB_CONN_MAX_AGE', '60')),
+            conn_health_checks=True,
+        )
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('DB_NAME'),
+            'USER': os.getenv('DB_USER'),
+            'PASSWORD': os.getenv('DB_PASSWORD'),
+            'HOST': os.getenv('DB_HOST'),
+            'PORT': os.getenv('DB_PORT')
+        }
+    }
 
 
 # Password validation
@@ -193,7 +211,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = os.getenv('TZ', 'UTC')
 
 USE_I18N = True
 
@@ -206,12 +224,25 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
+# Only declare the source dir if it actually exists — collectstatic warns loudly
+# otherwise, and this repo gitignores /static/ so it is absent in a fresh clone.
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),
+    path for path in [os.path.join(BASE_DIR, 'static')] if os.path.isdir(path)
 ]
 
-# WhiteNoise configuration
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+# WhiteNoise configuration.
+# Compressed but NOT hashed/manifest: a manifest storage turns any missing
+# {% static %} target into a hard 500 in production. Switch to
+# 'whitenoise.storage.CompressedManifestStaticFilesStorage' once the static
+# pipeline is known-clean and you want far-future cache headers.
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
+    },
+}
 
 STATICFILES_FINDERS = [
     'django.contrib.staticfiles.finders.FileSystemFinder',
@@ -238,12 +269,12 @@ SWAGGER_SETTINGS = {
     'DEFAULT_API_URL': os.getenv('SWAGGER_BASE_URL', 'http://localhost:8000/api/')
 }
 
-# Enable HTTPS-related settings
-SECURE_SSL_REDIRECT = True  # Redirect HTTP to HTTPS
-SESSION_COOKIE_SECURE = True  # Ensure session cookies are only sent over HTTPS
-CSRF_COOKIE_SECURE = True  # Ensure CSRF cookies are only sent over HTTPS
+# HTTPS is terminated at the shared Caddy proxy, which forwards plain HTTP to
+# gunicorn. SECURE_PROXY_SSL_HEADER is what stops that from looking insecure.
+SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'True').lower() in ('1', 'true', 'yes')
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
 
-# If you're behind a reverse proxy (like Nginx)
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'https://finityshop.vercel.app')

@@ -1,0 +1,66 @@
+# Pinned explicitly rather than derived from the directory name, so container,
+# volume and network names stay predictable no matter what the checkout dir is
+# called on the server. Everything below is prefixed `shop-be`, which cannot
+# collide with the FuelFlow stack's `fuelflow*` names on the shared box.
+#   containers: shop-be-web-1, shop-be-db-1
+#   volume:     shop-be_pgdata
+#   network:    shop-be_internal
+name: shop-be
+
+services:
+  db:
+    image: postgres:17-alpine
+    init: true
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      TZ: Africa/Dar_es_Salaam
+      PGTZ: Africa/Dar_es_Salaam
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # Both -U and -d are required; without them pg_isready checks the wrong
+      # role/database and can report ready before the app's db is usable.
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - internal
+
+  web:
+    build: .
+    image: shop-be:latest
+    init: true
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      TZ: Africa/Dar_es_Salaam
+    depends_on:
+      db:
+        condition: service_healthy
+    # No host port binding. The shared Caddy reaches gunicorn on port 8000 over
+    # the external proxy network; nothing is published to the VPS host.
+    expose:
+      - "8000"
+    networks:
+      - internal
+      - proxy
+
+volumes:
+  pgdata:
+
+networks:
+  # Private network for app <-> db traffic only.
+  internal:
+
+  # PLACEHOLDER: replace with the real shared network name from `docker network ls`
+  # (the one the existing Caddy container is attached to). Do not remove
+  # `external: true` — this compose file must join that network, never create it.
+  proxy:
+    name: REPLACE_ME_shared_caddy_network
+    external: true

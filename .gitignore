@@ -6,9 +6,13 @@ __pycache__/
 # C extensions
 *.so
 
-# Environment variables
+# Environment variables.
+# `*.env` only matches names ENDING in .env — it does not cover .env.backup or
+# .env.local, which is how .env.backup ended up committed with live credentials.
 .env
 *.env
+.env.*
+!.env.example
 
 # Django specific
 db.sqlite3
