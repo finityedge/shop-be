@@ -19,9 +19,7 @@ db.sqlite3-journal
 # If using whitenoise for static files
 /static/
 
-# Django migrations
-**/migrations/*
-!**/migrations/__init__.py
+# Django migrations are tracked — they are part of the deployable schema.
 
 # Logs
 *.log
